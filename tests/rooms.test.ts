@@ -16,6 +16,7 @@ vi.mock("@/server/catalog", () => ({
           artistId: a,
           artworkUrl: "https://example.test/art.jpg",
           previewUrl: `https://example.test/${a}-${s}.m4a`,
+          year: 2000 + s,
         });
       }
     }
@@ -58,7 +59,7 @@ function seed(n: number) {
 
 async function startMedium(room: ReturnType<typeof seed>["room"], hostId: string) {
   store.setConfig(room, hostId, {
-    category: "thai",
+    playlist: "thai-classic",
     difficulty: "medium",
     roundCount: 3,
   });
@@ -92,7 +93,7 @@ describe("room lifecycle", () => {
     const { room, ids } = seed(2);
     expect(() =>
       store.setConfig(room, ids[1]!, {
-        category: "kpop",
+        playlist: "kpop-classic",
         difficulty: "hard",
         roundCount: 5,
       }),

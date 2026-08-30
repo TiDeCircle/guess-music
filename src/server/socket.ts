@@ -164,7 +164,7 @@ const roomChannel = (code: string) => `room:${code}`;
 
 function messageFor(err: unknown): string {
   if (err instanceof RoomError) return err.message;
-  if (err instanceof EmptyCatalogError) return "หมวดนี้ยังไม่มีเพลง ลองหมวดอื่น";
+  if (err instanceof EmptyCatalogError) return "playlist นี้ยังไม่มีเพลง ลองอันอื่น";
   // Anything else is ours to fix, not the player's to read.
   console.error("[socket]", err);
   return "เกิดข้อผิดพลาด ลองใหม่อีกครั้ง";

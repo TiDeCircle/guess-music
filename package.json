@@ -10,7 +10,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:playlists": "tsx scripts/check-playlists.ts"
   },
   "engines": {
     "node": ">=20.9.0"

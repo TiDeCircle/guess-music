@@ -15,9 +15,27 @@ export type Track = {
   artworkUrl: string;
   /** The 30-second Preview. Never a full song. */
   previewUrl: string;
+  /** Release year, used to narrow a Playlist to an era. 0 when unknown. */
+  year: number;
 };
 
-export type CategoryId = "thai" | "intl" | "kpop";
+/**
+ * The Playlists a Host can pick from. A Playlist decides which songs a Match
+ * draws on — an era, a curated set, or a live chart.
+ */
+export type PlaylistId =
+  | "thai-now"
+  | "thai-classic"
+  | "thai-90s"
+  | "thai-2000s"
+  | "thai-2020s"
+  | "intl-now"
+  | "intl-classic"
+  | "kpop-now"
+  | "kpop-classic";
+
+/** Only used to arrange the picker; players choose a Playlist, not a group. */
+export type PlaylistGroup = "thai" | "intl" | "kpop";
 
 export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
 
@@ -46,7 +64,7 @@ export type Player = {
 export type RoomPhase = "lobby" | "loading" | "playing" | "reveal" | "finished";
 
 export type MatchConfig = {
-  category: CategoryId;
+  playlist: PlaylistId;
   difficulty: DifficultyId;
   roundCount: number;
 };

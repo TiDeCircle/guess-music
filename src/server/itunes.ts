@@ -1,29 +1,46 @@
 import type { Track } from "@/shared/types";
 
 /**
- * iTunes Search API client.
+ * iTunes client. Two endpoints are used:
  *
- * No key, no OAuth — but Apple asks for roughly 20 requests a minute, and a
- * handful of rooms starting matches at once would blow past that easily. So
- * every artist lookup is cached for a day and concurrency is kept low.
+ * - the Search API, for an artist's songs
+ * - Apple's daily most-played RSS feed, for "what's charting right now"
+ *
+ * Neither needs a key or OAuth, but Apple asks for roughly 20 requests a
+ * minute, and a handful of rooms starting matches at once would blow past that.
+ * So everything is cached for a day and concurrency is kept low.
  */
 
 const SEARCH_URL = "https://itunes.apple.com/search";
+const LOOKUP_URL = "https://itunes.apple.com/lookup";
+const CHART_URL = (country: string, limit: number) =>
+  `https://rss.marketingtools.apple.com/api/v2/${country}/music/most-played/${limit}/songs.json`;
 
 /** Apple's guidance is ~20 req/min; a day of caching keeps us far under it. */
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** How many songs to keep per artist. iTunes returns them popularity-first. */
+/**
+ * How deep to cache per artist. Deliberately deeper than any one Playlist
+ * needs: an era Playlist filters by year before taking its share, and a shallow
+ * cache would leave it with almost nothing to filter.
+ */
+const CACHE_DEPTH_PER_ARTIST = 25;
+
+/** How many of those an unfiltered Playlist actually uses, popularity-first. */
 const TRACKS_PER_ARTIST = 10;
 
 /** Enough for same-artist decoys at extreme difficulty. */
 const MIN_TRACKS_PER_ARTIST = 4;
 
+/** The lookup endpoint takes many ids at once; this stays well inside it. */
+const LOOKUP_BATCH = 150;
+
 const REQUEST_TIMEOUT_MS = 8_000;
 
-type CacheEntry = { at: number; tracks: Track[] };
+type CacheEntry<T> = { at: number; value: T };
 
-const cache = new Map<string, CacheEntry>();
+const artistCache = new Map<string, CacheEntry<Track[]>>();
+const chartCache = new Map<string, CacheEntry<Track[]>>();
 
 type ItunesResult = {
   trackId?: number;
@@ -32,6 +49,7 @@ type ItunesResult = {
   artistId?: number;
   artworkUrl100?: string;
   previewUrl?: string;
+  releaseDate?: string;
   kind?: string;
 };
 
@@ -54,8 +72,35 @@ function toTrack(r: ItunesResult): Track | null {
     artistId: r.artistId ?? 0,
     artworkUrl: upscaleArtwork(r.artworkUrl100),
     previewUrl: r.previewUrl,
+    year: Number(String(r.releaseDate ?? "").slice(0, 4)) || 0,
   };
 }
+
+async function getJson<T>(url: string | URL): Promise<T> {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    headers: { "User-Agent": "guess-music/0.1" },
+  });
+  if (!res.ok) throw new Error(`${res.status} for ${url}`);
+  // The search endpoint answers with content-type text/javascript, so res.json()
+  // is fine but worth knowing if this ever starts failing oddly.
+  return (await res.json()) as T;
+}
+
+/** Drop repeats of the same song arriving as different releases. */
+function dedupeByTitle(tracks: Track[]): Track[] {
+  const seen = new Set<string>();
+  const out: Track[] = [];
+  for (const t of tracks) {
+    const key = `${t.title.trim().toLowerCase()}|${t.artist.trim().toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------- artists
 
 async function searchArtist(artist: string, country: string): Promise<Track[]> {
   const url = new URL(SEARCH_URL);
@@ -63,47 +108,45 @@ async function searchArtist(artist: string, country: string): Promise<Track[]> {
   url.searchParams.set("media", "music");
   url.searchParams.set("entity", "song");
   url.searchParams.set("country", country);
-  url.searchParams.set("limit", String(TRACKS_PER_ARTIST * 2));
+  url.searchParams.set("limit", String(CACHE_DEPTH_PER_ARTIST * 2));
 
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: { "User-Agent": "guess-music/0.1" },
-  });
-  if (!res.ok) throw new Error(`iTunes ${res.status} for ${artist}`);
-
-  // The endpoint answers with content-type text/javascript, so res.json()
-  // is fine but worth knowing if this ever starts failing oddly.
-  const body = (await res.json()) as { results?: ItunesResult[] };
-  const results = body.results ?? [];
-
+  const body = await getJson<{ results?: ItunesResult[] }>(url);
   const tracks: Track[] = [];
-  const seenTitles = new Set<string>();
-  for (const r of results) {
+  for (const r of body.results ?? []) {
     const t = toTrack(r);
     if (!t) continue;
     // A search for "Bodyslam" also returns other artists' covers and features;
     // keeping only the searched artist is what makes same-artist decoys work.
     if (t.artist.toLowerCase() !== artist.toLowerCase()) continue;
-    const key = t.title.trim().toLowerCase();
-    if (seenTitles.has(key)) continue;
-    seenTitles.add(key);
     tracks.push(t);
-    if (tracks.length >= TRACKS_PER_ARTIST) break;
   }
-  return tracks;
+  return dedupeByTitle(tracks).slice(0, CACHE_DEPTH_PER_ARTIST);
 }
 
+/** An artist's songs, popularity-first, cached deep enough to filter later. */
 export async function getArtistTracks(
   artist: string,
   country: string,
 ): Promise<Track[]> {
   const key = `${country}:${artist.toLowerCase()}`;
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.tracks;
+  const hit = artistCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
   const tracks = await searchArtist(artist, country);
-  cache.set(key, { at: Date.now(), tracks });
+  artistCache.set(key, { at: Date.now(), value: tracks });
   return tracks;
+}
+
+export type YearWindow = { from?: number; to?: number };
+
+function inWindow(track: Track, window?: YearWindow): boolean {
+  if (!window) return true;
+  // A track with no release date cannot be placed in an era, so an era
+  // Playlist drops it rather than guessing.
+  if (track.year === 0) return false;
+  if (window.from !== undefined && track.year < window.from) return false;
+  if (window.to !== undefined && track.year > window.to) return false;
+  return true;
 }
 
 /**
@@ -115,37 +158,88 @@ export async function getArtistTracks(
 export async function getTracksForArtists(
   artists: readonly string[],
   country: string,
+  window?: YearWindow,
   concurrency = 3,
 ): Promise<Track[]> {
   const out: Track[] = [];
   const queue = artists.slice();
 
-  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
-    for (;;) {
-      const artist = queue.shift();
-      if (!artist) return;
-      try {
-        const tracks = await getArtistTracks(artist, country);
-        // An artist with only one or two songs can't supply same-artist decoys
-        // and skews the pool, so require a few.
-        if (tracks.length >= MIN_TRACKS_PER_ARTIST) out.push(...tracks);
-      } catch {
-        // Dropped on purpose — see the doc comment.
+  const workers = Array.from(
+    { length: Math.min(concurrency, queue.length) },
+    async () => {
+      for (;;) {
+        const artist = queue.shift();
+        if (!artist) return;
+        try {
+          const all = await getArtistTracks(artist, country);
+          // Filter first, then take: taking first would throw away the very
+          // songs an era Playlist is looking for.
+          const kept = all.filter((t) => inWindow(t, window)).slice(0, TRACKS_PER_ARTIST);
+          // An artist with only one or two songs in range can't supply
+          // same-artist decoys and skews the pool, so require a few.
+          if (kept.length >= MIN_TRACKS_PER_ARTIST) out.push(...kept);
+        } catch {
+          // Dropped on purpose — see the doc comment.
+        }
       }
-    }
-  });
+    },
+  );
 
   await Promise.all(workers);
   return out;
 }
 
+// -------------------------------------------------------------------- charts
+
+type ChartFeed = { feed?: { results?: Array<{ id?: string }> } };
+
+/**
+ * Apple's most-played feed for a storefront.
+ *
+ * The feed itself carries no preview URLs — only ids — so the ids are handed
+ * straight to the lookup endpoint, which returns the full records in a single
+ * request per batch.
+ */
+export async function getChartTracks(
+  country: string,
+  limit: number,
+): Promise<Track[]> {
+  const key = `${country}:${limit}`;
+  const hit = chartCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+
+  const feed = await getJson<ChartFeed>(CHART_URL(country, limit));
+  const ids = (feed.feed?.results ?? [])
+    .map((r) => r.id)
+    .filter((id): id is string => Boolean(id));
+
+  const tracks: Track[] = [];
+  for (let i = 0; i < ids.length; i += LOOKUP_BATCH) {
+    const url = new URL(LOOKUP_URL);
+    url.searchParams.set("id", ids.slice(i, i + LOOKUP_BATCH).join(","));
+    url.searchParams.set("country", country.toUpperCase());
+    url.searchParams.set("entity", "song");
+    const body = await getJson<{ results?: ItunesResult[] }>(url);
+    for (const r of body.results ?? []) {
+      const t = toTrack(r);
+      if (t) tracks.push(t);
+    }
+  }
+
+  const deduped = dedupeByTitle(tracks);
+  chartCache.set(key, { at: Date.now(), value: deduped });
+  return deduped;
+}
+
 /** Exposed for tests and for a warm-up on boot. */
 export function clearItunesCache(): void {
-  cache.clear();
+  artistCache.clear();
+  chartCache.clear();
 }
 
 export const ITUNES_TUNING = {
   CACHE_TTL_MS,
+  CACHE_DEPTH_PER_ARTIST,
   TRACKS_PER_ARTIST,
   MIN_TRACKS_PER_ARTIST,
 };

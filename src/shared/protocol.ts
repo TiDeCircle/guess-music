@@ -32,7 +32,17 @@ export const playerNameSchema = z
   .min(1)
   .max(NAME_MAX_LENGTH);
 
-export const categorySchema = z.enum(["thai", "intl", "kpop"]);
+export const playlistSchema = z.enum([
+  "thai-now",
+  "thai-classic",
+  "thai-90s",
+  "thai-2000s",
+  "thai-2020s",
+  "intl-now",
+  "intl-classic",
+  "kpop-now",
+  "kpop-classic",
+]);
 export const difficultySchema = z.enum(["easy", "medium", "hard", "extreme"]);
 
 export const createRoomSchema = z.object({ name: playerNameSchema });
@@ -45,7 +55,7 @@ export const joinRoomSchema = z.object({
 });
 
 export const configSchema = z.object({
-  category: categorySchema,
+  playlist: playlistSchema,
   difficulty: difficultySchema,
   roundCount: z.number().int().min(3).max(20),
 });

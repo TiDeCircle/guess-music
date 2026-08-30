@@ -1,0 +1,23 @@
+/** Thai acts whose hits land in the 2020s. */
+export const THAI_2020S_ARTISTS = [
+  "Three Man Down",
+  "Bowkylion",
+  "Tilly Birds",
+  "Nont Tanont",
+  "Jeff Satur",
+  "The TOYS",
+  "Ink Waruntorn",
+  "Safeplanet",
+  "Atom Chanakan",
+  "Whal & Dolph",
+  "PROXIE",
+  "Mirrr",
+  "fellow fellow",
+  "Billkin",
+  "PP Krit",
+  "Room39",
+  "The Parkinson",
+  "Gene Kasidit",
+  "Num Kala",
+  "MEYOU",
+];

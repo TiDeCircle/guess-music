@@ -1,0 +1,23 @@
+/** Thai rock and pop of the 2000s — the string-band era. */
+export const THAI_2000S_ARTISTS = [
+  "Bodyslam",
+  "Big Ass",
+  "Potato",
+  "Klear",
+  "Palmy",
+  "Zeal",
+  "Paradox",
+  "SCRUBB",
+  "Endorphine",
+  "Clash",
+  "Labanoon",
+  "Silly Fools",
+  "Instinct",
+  "Sweet Mullet",
+  "Retrospect",
+  "Getsunova",
+  "Slot Machine",
+  "Tattoo Colour",
+  "Lomosonic",
+  "Season Five",
+];

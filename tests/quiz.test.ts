@@ -16,6 +16,7 @@ function pool(artists: number, per: number): Track[] {
         artistId: a,
         artworkUrl: "https://example.test/art.jpg",
         previewUrl: `https://example.test/${a}-${s}.m4a`,
+        year: 2000 + s,
       });
     }
   }

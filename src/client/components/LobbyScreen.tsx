@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import type { CategoryId, DifficultyId, MatchConfig, RoomState } from "@/shared/types";
+import type { DifficultyId, MatchConfig, PlaylistGroup, PlaylistId, RoomState } from "@/shared/types";
 import { DIFFICULTIES, DIFFICULTY_ORDER } from "@/shared/difficulty";
-import { CATEGORY_ORDER } from "@/data/seeds";
+import { PLAYLISTS, PLAYLIST_GROUPS } from "@/data/seeds";
 import { MAX_PLAYERS } from "@/shared/protocol";
 import { useLang, type StringKey } from "@/client/i18n";
 import { Button } from "./Button";
 import { FieldLabel } from "./Shell";
 
-const CATEGORY_LABEL: Record<CategoryId, StringKey> = {
-  thai: "categoryThai",
-  intl: "categoryIntl",
-  kpop: "categoryKpop",
+const GROUP_LABEL: Record<PlaylistGroup, StringKey> = {
+  thai: "groupThai",
+  intl: "groupIntl",
+  kpop: "groupKpop",
 };
 
 const DIFFICULTY_LABEL: Record<DifficultyId, StringKey> = {
@@ -102,13 +102,32 @@ export function LobbyScreen({
 
       <section className="flex flex-col gap-8 md:col-span-7">
         <div>
-          <FieldLabel>{t("category")}</FieldLabel>
-          <OptionRow
-            options={CATEGORY_ORDER.map((id) => ({ id, label: t(CATEGORY_LABEL[id]) }))}
-            value={room.config.category}
-            disabled={!isHost}
-            onSelect={(category) => patch({ category: category as CategoryId })}
-          />
+          <FieldLabel>{t("playlist")}</FieldLabel>
+          {/* Grouped by language so nine options stay scannable, but the choice
+              itself is flat: one click picks a Playlist, not a group then a
+              playlist. */}
+          <div className="mt-2 flex flex-col gap-4">
+            {PLAYLIST_GROUPS.map(({ group, ids }) => (
+              <div key={group}>
+                <div className="label mb-1 text-grey-500">{t(GROUP_LABEL[group])}</div>
+                <OptionRow
+                  options={ids.map((id) => ({
+                    id,
+                    label: t(`playlist.${id}` as StringKey),
+                    hint:
+                      PLAYLISTS[id].source.kind === "chart"
+                        ? t("chartHint")
+                        : undefined,
+                  }))}
+                  value={room.config.playlist}
+                  disabled={!isHost}
+                  columns={5}
+                  narrowColumns={1}
+                  onSelect={(playlist) => patch({ playlist: playlist as PlaylistId })}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -172,18 +191,36 @@ export function LobbyScreen({
 
 type Option = { id: string; label: string; hint?: string };
 
-/** A row of hairline-separated cells: one is filled, the rest are outlined. */
+/**
+ * A row of hairline-separated cells: one is filled, the rest are outlined.
+ *
+ * `columns` forces a width so several rows stacked above each other share the
+ * same column edges — which is the whole point of a modular grid, and does not
+ * happen if each row simply sizes itself to how many options it holds.
+ */
 function OptionRow({
   options,
   value,
   onSelect,
   disabled,
+  columns,
+  narrowColumns,
 }: {
   options: Option[];
   value: string;
   onSelect: (id: string) => void;
   disabled: boolean;
+  columns?: number;
+  narrowColumns?: number;
 }) {
+  const cols = columns ?? options.length;
+  const narrow = narrowColumns ?? (options.length % 2 === 0 ? 2 : options.length);
+  // The black dividing lines are the container's own background, so a short row
+  // in a fixed grid would show them as solid blocks. Blank white cells fill the
+  // remainder — and are hidden on narrow screens, where the grid is a different
+  // shape and would otherwise gain empty rows.
+  const fillers = cols > 0 ? (cols - (options.length % cols)) % cols : 0;
+
   return (
     // The column count follows the number of options. A fixed four-column grid
     // leaves an empty cell for a three-option row, and because the black
@@ -191,12 +228,7 @@ function OptionRow({
     // up as a solid black block.
     <div
       className="option-row mt-2 grid gap-px bg-ink"
-      style={
-        {
-          "--cols": options.length,
-          "--cols-narrow": options.length % 2 === 0 ? 2 : options.length,
-        } as CSSProperties
-      }
+      style={{ "--cols": cols, "--cols-narrow": narrow } as CSSProperties}
     >
       {options.map((opt) => {
         const active = opt.id === value;
@@ -228,6 +260,9 @@ function OptionRow({
           </button>
         );
       })}
+      {Array.from({ length: fillers }, (_, i) => (
+        <div key={`filler-${i}`} aria-hidden className="hidden bg-paper sm:block" />
+      ))}
     </div>
   );
 }

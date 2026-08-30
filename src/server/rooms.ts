@@ -1,6 +1,5 @@
 import { randomUUID, randomInt } from "node:crypto";
 import type {
-  CategoryId,
   DifficultyId,
   MatchConfig,
   Player,
@@ -11,7 +10,7 @@ import type {
   Track,
 } from "@/shared/types";
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from "@/shared/difficulty";
-import { DEFAULT_CATEGORY } from "@/data/seeds";
+import { DEFAULT_PLAYLIST } from "@/data/seeds";
 import { scoreAnswer } from "@/shared/scoring";
 import { makeRng } from "@/shared/rng";
 import { quizMode, type RoundPlan } from "@/shared/modes";
@@ -150,7 +149,7 @@ export class RoomStore {
       hostId: player.id,
       players: new Map([[player.id, player]]),
       config: {
-        category: DEFAULT_CATEGORY,
+        playlist: DEFAULT_PLAYLIST,
         difficulty: DEFAULT_DIFFICULTY,
         roundCount: DEFAULT_ROUND_COUNT,
       },
@@ -311,7 +310,7 @@ export class RoomStore {
     }
 
     const rng = makeRng(Date.now() ^ randomInt(2 ** 31));
-    const pool = await buildPool(room.config.category, rng);
+    const pool = await buildPool(room.config.playlist, rng);
 
     const rounds = quizMode.buildRounds({
       pool,
@@ -322,7 +321,7 @@ export class RoomStore {
     });
 
     if (rounds.length === 0) {
-      throw new RoomError("no_tracks", "หาเพลงไม่ได้ ลองหมวดอื่นดู");
+      throw new RoomError("no_tracks", "หาเพลงไม่ได้ ลอง playlist อื่นดู");
     }
 
     for (const player of room.players.values()) player.score = 0;
@@ -579,4 +578,4 @@ export const ROOM_TUNING = {
   DEFAULT_ROUND_COUNT,
 };
 
-export type { ServerPlayer, CategoryId, DifficultyId };
+export type { ServerPlayer, DifficultyId };
