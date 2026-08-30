@@ -30,6 +30,8 @@ export class AudioEngine {
   private unlocked = false;
   /** Removes the timeupdate listener that enforces the clip length. */
   private clipWatcher: (() => void) | null = null;
+  /** Removes the listeners watching a recap preview to its end. */
+  private endWatcher: (() => void) | null = null;
   /** Linear amplitude, 0..1. Kept here so it survives element creation. */
   private volume = 1;
 
@@ -151,6 +153,49 @@ export class AudioEngine {
     // Capped below the Answer Window (always clip + 5s) so a stalled clip can
     // catch up without ever still playing when the round is revealed.
     this.stopTimer = setTimeout(() => this.stop(), clipMs + STALL_ALLOWANCE_MS);
+  }
+
+  /**
+   * Play a Preview in full, for the end-of-Match recap.
+   *
+   * Unlike a Round clip there is no cutoff — the listener wants the whole
+   * thirty seconds — so the caller is told when it ends instead, whether that
+   * is the track running out or something stopping it.
+   */
+  playPreview(url: string, onEnd: () => void): void {
+    const el = this.element();
+    this.cancelStop();
+
+    if (this.loadedUrl !== url) {
+      this.loadedUrl = url;
+      el.crossOrigin = "anonymous";
+      el.src = url;
+    }
+    try {
+      el.currentTime = 0;
+    } catch {
+      // See play().
+    }
+
+    const finish = () => {
+      this.clearEndWatcher();
+      onEnd();
+    };
+    // `pause` covers stopping it by hand or by starting another one; between
+    // them the caller always hears back exactly once.
+    el.addEventListener("ended", finish);
+    el.addEventListener("pause", finish);
+    this.endWatcher = () => {
+      el.removeEventListener("ended", finish);
+      el.removeEventListener("pause", finish);
+    };
+
+    void el.play().catch(finish);
+  }
+
+  private clearEndWatcher(): void {
+    this.endWatcher?.();
+    this.endWatcher = null;
   }
 
   stop(): void {

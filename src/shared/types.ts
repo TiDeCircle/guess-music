@@ -112,6 +112,24 @@ export type RevealView = {
   }>;
 };
 
+/** One Round as it looked once it was over, kept for the end-of-Match recap. */
+export type MatchSummaryRound = {
+  index: number;
+  track: Track;
+  results: Array<{ playerId: string; correct: boolean; gained: number }>;
+};
+
+/**
+ * Everything a Match played, assembled as it goes.
+ *
+ * Sent only once the Match is finished: it grows with every Round, and the
+ * whole Room state is broadcast on every change, so shipping it throughout
+ * would cost bandwidth on data nobody can act on yet.
+ */
+export type MatchSummary = {
+  rounds: MatchSummaryRound[];
+};
+
 export type RoomState = {
   code: string;
   phase: RoomPhase;
@@ -125,4 +143,6 @@ export type RoomState = {
   answeredPlayerIds: string[];
   /** Which players have their audio buffered, while phase is loading. */
   readyPlayerIds: string[];
+  /** The songs just played. Present only while phase is finished. */
+  summary: MatchSummary | null;
 };

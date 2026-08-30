@@ -302,6 +302,80 @@ describe("lockstep sequence", () => {
     expect(second.some((id) => first.includes(id))).toBe(false);
   });
 
+  describe("match summary", () => {
+    it("is withheld until the match is over", async () => {
+      const { room, ids } = seed(1);
+      await startMedium(room, ids[0]!);
+      store.markReady(room, ids[0]!, 0);
+      // Mid-match it exists on the server but must not be broadcast: it grows
+      // every round and every state change goes to every player.
+      expect(toRoomState(room).summary).toBeNull();
+      store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
+      expect(toRoomState(room).summary).toBeNull();
+    });
+
+    it("lists every song played, in order, once the match ends", async () => {
+      const { room, ids } = seed(2);
+      await startMedium(room, ids[0]!);
+
+      const answers: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        store.markReady(room, ids[0]!, i);
+        store.markReady(room, ids[1]!, i);
+        const plan = room.match!.rounds[i]!;
+        answers.push(plan.answer.id);
+        // One right, one wrong, so both outcomes land in the summary.
+        store.submitAnswer(room, ids[0]!, i, plan.answer.id);
+        store.submitAnswer(
+          room,
+          ids[1]!,
+          i,
+          plan.choices.find((c) => c.id !== plan.answer.id)!.id,
+        );
+        vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+      }
+
+      const summary = toRoomState(room).summary;
+      expect(summary).not.toBeNull();
+      expect(summary!.rounds.map((r) => r.index)).toEqual([0, 1, 2]);
+      expect(summary!.rounds.map((r) => r.track.id)).toEqual(answers);
+
+      const first = summary!.rounds[0]!;
+      expect(first.track.previewUrl).toBeTruthy();
+      expect(first.track.artworkUrl).toBeTruthy();
+      expect(first.results.find((r) => r.playerId === ids[0])!.correct).toBe(true);
+      expect(first.results.find((r) => r.playerId === ids[0])!.gained).toBeGreaterThan(0);
+      expect(first.results.find((r) => r.playerId === ids[1])!.correct).toBe(false);
+    });
+
+    it("clears when the room goes back to the lobby", async () => {
+      const { room, ids } = seed(1);
+      await startMedium(room, ids[0]!);
+      store.markReady(room, ids[0]!, 0);
+      store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
+      vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+      expect(room.summary!.rounds.length).toBeGreaterThan(0);
+
+      store.returnToLobby(room, ids[0]!);
+      expect(room.summary).toBeNull();
+    });
+
+    it("starts a fresh list for a second match", async () => {
+      const { room, ids } = seed(1);
+      await startMedium(room, ids[0]!);
+      for (let i = 0; i < 3; i++) {
+        store.markReady(room, ids[0]!, i);
+        store.submitAnswer(room, ids[0]!, i, room.match!.rounds[i]!.answer.id);
+        vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+      }
+      expect(room.summary!.rounds).toHaveLength(3);
+
+      store.returnToLobby(room, ids[0]!);
+      await startMedium(room, ids[0]!);
+      expect(room.summary!.rounds).toHaveLength(0);
+    });
+  });
+
   it("broadcasts state on every transition", async () => {
     const { room, ids } = seed(1);
     const before = states;

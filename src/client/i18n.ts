@@ -99,6 +99,9 @@ export const STRINGS = {
   finalScore: { th: "คะแนนรวม", en: "Final score" },
   standings: { th: "อันดับ", en: "Standings" },
   playAgain: { th: "เล่นอีกครั้ง", en: "Play again" },
+  songsPlayed: { th: "เพลงที่เล่นไป", en: "Songs played" },
+  listen: { th: "ฟัง", en: "Play" },
+  stopListening: { th: "หยุด", en: "Stop" },
 
   connecting: { th: "กำลังเชื่อมต่อ", en: "Connecting" },
   disconnected: { th: "หลุดการเชื่อมต่อ", en: "Disconnected" },

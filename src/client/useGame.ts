@@ -100,6 +100,8 @@ export function useGame() {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [volumeStep, setVolumeStepState] = useState(DEFAULT_VOLUME_STEP);
   const [history, setHistory] = useState<RoundOutcome[]>([]);
+  /** Track id currently being replayed on the recap screen, if any. */
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
@@ -291,10 +293,31 @@ export function useGame() {
   const startMatch = useCallback(() => {
     setError(null);
     setHistory([]);
+    setPreviewingId(null);
     readyForRef.current = -1;
     playedRef.current = -1;
     socketRef.current?.emit("match:start");
   }, []);
+
+  /** Replay one song from the end-of-match recap, or stop the one playing. */
+  const togglePreview = useCallback(
+    (trackId: string, url: string) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      // Tapping the one already playing stops it; the pause it causes clears
+      // the flag through the same callback.
+      if (previewingId === trackId) {
+        audio.stop();
+        setPreviewingId(null);
+        return;
+      }
+      setPreviewingId(trackId);
+      audio.playPreview(url, () =>
+        setPreviewingId((current) => (current === trackId ? null : current)),
+      );
+    },
+    [previewingId],
+  );
 
   const answer = useCallback((index: number, choiceId: string) => {
     socketRef.current?.emit("round:answer", { index, choiceId });
@@ -329,6 +352,8 @@ export function useGame() {
     volumeStep,
     setVolumeStep,
     history,
+    previewingId,
+    togglePreview,
     createRoom,
     joinRoom,
     setConfig,

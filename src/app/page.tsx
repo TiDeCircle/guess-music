@@ -110,6 +110,8 @@ export default function Page() {
         <FinishedScreen
           room={game.room}
           playerId={game.playerId}
+          previewingId={game.previewingId}
+          onTogglePreview={game.togglePreview}
           onPlayAgain={() => {
             setStarting(true);
             game.startMatch();

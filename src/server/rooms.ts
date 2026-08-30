@@ -1,6 +1,7 @@
 import { randomUUID, randomInt } from "node:crypto";
 import type {
   DifficultyId,
+  MatchSummary,
   MatchConfig,
   Player,
   RevealView,
@@ -90,6 +91,8 @@ export type Room = {
   recentTrackIds: string[];
   /** Pool for the current Match, kept so decoys stay consistent. */
   pool: Track[];
+  /** Built up Round by Round; survives the Match so the recap can show it. */
+  summary: MatchSummary | null;
   emptyAt: number | null;
   timer: NodeJS.Timeout | null;
 };
@@ -158,6 +161,7 @@ export class RoomStore {
       reveal: null,
       recentTrackIds: [],
       pool: [],
+      summary: null,
       emptyAt: null,
       timer: null,
     };
@@ -328,6 +332,7 @@ export class RoomStore {
 
     room.pool = pool;
     room.reveal = null;
+    room.summary = { rounds: [] };
     room.match = {
       rounds,
       index: 0,
@@ -489,6 +494,16 @@ export class RoomStore {
     };
     room.phase = "reveal";
 
+    room.summary?.rounds.push({
+      index: match.index,
+      track: plan.answer,
+      results: room.reveal.results.map((r) => ({
+        playerId: r.playerId,
+        correct: r.correct,
+        gained: r.gained,
+      })),
+    });
+
     room.timer = setTimeout(() => {
       if (!room.match) return;
       room.match.index += 1;
@@ -513,6 +528,7 @@ export class RoomStore {
     room.phase = "lobby";
     room.match = null;
     room.reveal = null;
+    room.summary = null;
     this.events.onState(room);
   }
 }
@@ -568,6 +584,9 @@ export function toRoomState(room: Room): RoomState {
     reveal: room.reveal,
     answeredPlayerIds: match ? [...match.answers.keys()] : [],
     readyPlayerIds: match ? [...match.ready] : [],
+    // Only at the end: it grows all match long and every state change is
+    // broadcast to every player.
+    summary: room.phase === "finished" ? room.summary : null,
   };
 }
 
