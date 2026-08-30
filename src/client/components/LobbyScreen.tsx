@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import type { DifficultyId, MatchConfig, PlaylistGroup, PlaylistId, RoomState } from "@/shared/types";
 import { DIFFICULTIES, DIFFICULTY_ORDER } from "@/shared/difficulty";
 import { PLAYLISTS, PLAYLIST_GROUPS } from "@/data/seeds";
@@ -136,9 +136,12 @@ export function LobbyScreen({
             options={DIFFICULTY_ORDER.map((id) => ({
               id,
               label: t(DIFFICULTY_LABEL[id]),
-              // The numbers are the point of the difficulty choice, so they sit
-              // on the control rather than hiding in a tooltip.
-              hint: `${DIFFICULTIES[id].clipMs / 1000}s · ×${DIFFICULTIES[id].multiplier}`,
+              hint: (
+                <span className="flex items-center gap-2">
+                  <ClipBar clipMs={DIFFICULTIES[id].clipMs} />
+                  <span className="numeric">×{DIFFICULTIES[id].multiplier}</span>
+                </span>
+              ),
             }))}
             value={room.config.difficulty}
             disabled={!isHost}
@@ -149,7 +152,12 @@ export function LobbyScreen({
         <div>
           <FieldLabel>{t("rounds")}</FieldLabel>
           <OptionRow
-            options={ROUND_OPTIONS.map((n) => ({ id: String(n), label: String(n) }))}
+            // Bare numbers sit directly under a difficulty row labelled
+            // "15S · ×0.75" and get read as seconds. The unit is not decoration.
+            options={ROUND_OPTIONS.map((n) => ({
+              id: String(n),
+              label: `${n} ${t("roundsUnit")}`,
+            }))}
             value={String(room.config.roundCount)}
             disabled={!isHost}
             onSelect={(n) => patch({ roundCount: Number(n) })}
@@ -189,7 +197,34 @@ export function LobbyScreen({
   );
 }
 
-type Option = { id: string; label: string; hint?: string };
+/** Longest clip on the scale, so the bars are read against each other. */
+const LONGEST_CLIP_MS = Math.max(
+  ...DIFFICULTY_ORDER.map((id) => DIFFICULTIES[id].clipMs),
+);
+
+/**
+ * How much music a difficulty gives you, as a length rather than a number.
+ *
+ * The seconds used to be printed here, directly above a row of bare round
+ * counts — "15S" over "15" — and the two got read as the same thing. A bar has
+ * no unit to mistake, and comparing four lengths is the actual question being
+ * asked.
+ */
+function ClipBar({ clipMs }: { clipMs: number }) {
+  return (
+    <span className="relative inline-block h-1 w-12 shrink-0" aria-hidden>
+      {/* Both layers use currentColor, so the bar inverts with the cell when
+          the option is selected without needing a second set of tokens. */}
+      <span className="absolute inset-0 bg-current opacity-25" />
+      <span
+        className="absolute inset-y-0 left-0 bg-current"
+        style={{ width: `${(clipMs / LONGEST_CLIP_MS) * 100}%` }}
+      />
+    </span>
+  );
+}
+
+type Option = { id: string; label: string; hint?: ReactNode };
 
 /**
  * A row of hairline-separated cells: one is filled, the rest are outlined.
@@ -252,7 +287,7 @@ function OptionRow({
             <span className="label block">{opt.label}</span>
             {opt.hint && (
               <span
-                className={`numeric label mt-1 block ${active ? "text-grey-300" : "text-grey-500"}`}
+                className={`label mt-1 block ${active ? "text-grey-300" : "text-grey-500"}`}
               >
                 {opt.hint}
               </span>

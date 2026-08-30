@@ -69,6 +69,7 @@ export const STRINGS = {
   clipLength: { th: "ความยาวคลิป", en: "Clip" },
   multiplier: { th: "ตัวคูณคะแนน", en: "Multiplier" },
   rounds: { th: "จำนวนข้อ", en: "Rounds" },
+  roundsUnit: { th: "ข้อ", en: "rounds" },
 
   volume: { th: "ระดับเสียง", en: "Volume" },
   volumeUp: { th: "เพิ่มเสียง", en: "Louder" },
