@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/**
+ * Swiss design tokens.
+ *
+ * The palette is deliberately tiny: paper, ink, two greys, and one red. Red is
+ * reserved for a single meaning — "this is happening right now" — so it marks
+ * the timer, the live round, and nothing else. Correct and wrong are told apart
+ * by weight and a strikethrough rather than green/red, which keeps red's one
+ * meaning intact and reads the same to colour-blind players.
+ */
+@theme {
+  --color-paper: #ffffff;
+  --color-ink: #000000;
+  --color-grey-100: #f2f2f2;
+  --color-grey-300: #d8d8d8;
+  --color-grey-500: #8c8c8c;
+  --color-accent: #e30613;
+
+  /* Four sizes, wide gaps. A Swiss poster does not gently step through sizes. */
+  --text-label: 0.75rem;   /* 12px — uppercase meta, wide tracking */
+  --text-body: 1rem;       /* 16px — answers, names */
+  --text-title: 2rem;      /* 32px — the song, on reveal */
+  --text-display: 5.5rem;  /* 88px — countdown and score */
+}
+
+/*
+ * The 8px baseline is kept by choosing even steps on Tailwind's default 4px
+ * scale (2 = 8px, 4 = 16px, 6 = 24px, 8 = 32px). Redefining `--spacing` itself
+ * would be the obvious move and is a trap: in Tailwind v4 that token multiplies
+ * every spacing utility at once, so `w-40` silently becomes 320px.
+ */
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  /* Swiss layout is built on a hard grid; horizontal drift breaks it. */
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-plex-thai), var(--font-plex), system-ui, sans-serif;
+  /* Grotesques set for print look heavy on screen without this. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer utilities {
+  /* Meta labels: the small uppercase runs that anchor a Swiss grid. */
+  .label {
+    font-size: var(--text-label);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* Countdown and scores. Tabular figures stop the number jittering as it
+     counts down, which is the single most distracting thing a timer can do. */
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -0.03em;
+  }
+
+  /* The 1px hairline that does most of the dividing work in this design. */
+  .rule {
+    border-color: var(--color-ink);
+  }
+}
+
+/* Respect the system setting rather than animating regardless. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/**
+ * A row of choices whose column count matches how many there are. Set through
+ * custom properties because the count is data, not a design decision, and a
+ * fixed grid would leave black gaps where a cell is missing.
+ */
+.option-row {
+  grid-template-columns: repeat(var(--cols-narrow, 2), minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .option-row {
+    grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  }
+}

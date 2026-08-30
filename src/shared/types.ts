@@ -1,0 +1,104 @@
+/**
+ * Core domain types. See CONTEXT.md for what each term means — the names here
+ * are the ones the glossary defines, and they should not drift apart.
+ */
+
+/** One song as iTunes describes it. We never host audio ourselves. */
+export type Track = {
+  /** iTunes trackId, stringified. */
+  id: string;
+  title: string;
+  artist: string;
+  /** iTunes artistId — used to tell "same artist" decoys from "different". */
+  artistId: number;
+  /** Album art, already upgraded past the 100x100 the API hands back. */
+  artworkUrl: string;
+  /** The 30-second Preview. Never a full song. */
+  previewUrl: string;
+};
+
+export type CategoryId = "thai" | "intl" | "kpop";
+
+export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
+
+/** One of the four options shown in a Round. */
+export type Choice = {
+  id: string;
+  title: string;
+  artist: string;
+};
+
+export type Player = {
+  id: string;
+  name: string;
+  /** Total across the current Match. */
+  score: number;
+  connected: boolean;
+};
+
+/**
+ * Where a Room is in its lifecycle.
+ *
+ * `loading` exists because a Round must not start its clock until every client
+ * has the audio buffered — otherwise the slowest connection is punished for
+ * something that isn't the player's fault.
+ */
+export type RoomPhase = "lobby" | "loading" | "playing" | "reveal" | "finished";
+
+export type MatchConfig = {
+  category: CategoryId;
+  difficulty: DifficultyId;
+  roundCount: number;
+};
+
+/** What a Round looks like from the client's side — no answer in here. */
+export type RoundView = {
+  index: number;
+  total: number;
+  choices: Choice[];
+  /** How long the Preview stays audible. */
+  clipMs: number;
+  /**
+   * Server clock, in ms since epoch. The client counts down to this on its own
+   * so the timer runs at 60fps without a packet per second; it corrects for
+   * clock skew using the offset measured at join.
+   */
+  deadlineAt: number;
+  startAt: number;
+  previewUrl: string;
+};
+
+/** What everyone sees once the Round closes. */
+export type RevealView = {
+  index: number;
+  correctChoiceId: string;
+  track: Track;
+  /**
+   * The next Round's Preview, so clients can buffer it while the reveal is on
+   * screen. Null on the last Round.
+   */
+  nextPreviewUrl: string | null;
+  /** Per player: what they picked and what it earned. */
+  results: Array<{
+    playerId: string;
+    choiceId: string | null;
+    correct: boolean;
+    gained: number;
+    totalScore: number;
+  }>;
+};
+
+export type RoomState = {
+  code: string;
+  phase: RoomPhase;
+  hostId: string;
+  players: Player[];
+  config: MatchConfig;
+  /** Present while phase is playing/reveal/finished. */
+  round: RoundView | null;
+  reveal: RevealView | null;
+  /** Which players have already answered the current Round. */
+  answeredPlayerIds: string[];
+  /** Which players have their audio buffered, while phase is loading. */
+  readyPlayerIds: string[];
+};
