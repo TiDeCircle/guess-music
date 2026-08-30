@@ -49,6 +49,7 @@ export const STRINGS = {
   groupKpop: { th: "เคป็อป", en: "K-pop" },
 
   "playlist.thai-now": { th: "ไทยฮิตตอนนี้", en: "Thai — charting now" },
+  "playlist.thai-buzz": { th: "ฮิตติดกระแส", en: "Thai — trending" },
   "playlist.thai-classic": { th: "ไทยฮิตตลอดกาล", en: "Thai — all-time" },
   "playlist.thai-90s": { th: "ไทยยุค 90", en: "Thai — the 90s" },
   "playlist.thai-2000s": { th: "ไทยยุค 2000s", en: "Thai — the 2000s" },

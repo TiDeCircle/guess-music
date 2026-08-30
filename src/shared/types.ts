@@ -25,6 +25,7 @@ export type Track = {
  */
 export type PlaylistId =
   | "thai-now"
+  | "thai-buzz"
   | "thai-classic"
   | "thai-90s"
   | "thai-2000s"

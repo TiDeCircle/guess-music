@@ -34,6 +34,7 @@ export const playerNameSchema = z
 
 export const playlistSchema = z.enum([
   "thai-now",
+  "thai-buzz",
   "thai-classic",
   "thai-90s",
   "thai-2000s",

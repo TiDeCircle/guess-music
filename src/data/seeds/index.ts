@@ -5,6 +5,7 @@ import { THAI_2000S_ARTISTS } from "./thai2000s";
 import { THAI_2020S_ARTISTS } from "./thai2020s";
 import { INTL_ARTISTS } from "./intl";
 import { KPOP_ARTISTS } from "./kpop";
+import { HITS_TRACK_IDS } from "./hits";
 
 /**
  * Where a Playlist's Tracks come from.
@@ -52,6 +53,14 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
     id: "thai-now",
     group: "thai",
     source: { kind: "chart", country: "th", script: "thai" },
+  },
+  "thai-buzz": {
+    id: "thai-buzz",
+    group: "thai",
+    // A Spotify playlist someone exported, resolved to iTunes ids once by
+    // scripts/resolve-csv-playlist.ts. See src/data/seeds/hits-source.csv for
+    // what was asked for and src/data/seeds/hits.ts for what was found.
+    source: { kind: "tracks", country: "TH", trackIds: HITS_TRACK_IDS },
   },
   "thai-classic": {
     id: "thai-classic",
@@ -118,7 +127,14 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
 export const PLAYLIST_GROUPS: Array<{ group: PlaylistGroup; ids: PlaylistId[] }> = [
   {
     group: "thai",
-    ids: ["thai-now", "thai-classic", "thai-2020s", "thai-2000s", "thai-90s"],
+    ids: [
+      "thai-now",
+      "thai-buzz",
+      "thai-classic",
+      "thai-2020s",
+      "thai-2000s",
+      "thai-90s",
+    ],
   },
   { group: "intl", ids: ["intl-now", "intl-classic"] },
   { group: "kpop", ids: ["kpop-now", "kpop-classic"] },
