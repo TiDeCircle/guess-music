@@ -1,13 +1,11 @@
 /**
- * The "ฮิตติดกระแส" playlist, exported from Spotify and resolved to iTunes
- * track ids by scripts/resolve-csv-playlist.ts.
+ * Resolved from hits-source.csv by scripts/resolve-csv-playlist.ts.
  *
  * Ids rather than names on purpose: the list names exact recordings, so what
- * plays is what was chosen, and one lookup request fetches the lot. The source
- * export is kept beside this file as hits-source.csv.
+ * plays is what was chosen, and one lookup request fetches the lot.
  *
- * 55 of 100 tracks resolved. The rest are not on the Thai iTunes
- * storefront, or are there under a title too different to match confidently.
+ * 56 of 100 tracks resolved. The rest are not on the Thai
+ * iTunes storefront, or are there under a title too different to match.
  */
 export const HITS_TRACK_IDS: readonly string[] = [
   "1840118550", // 9tokyo — สายไป (feat. BLVCKHEART)
@@ -29,6 +27,7 @@ export const HITS_TRACK_IDS: readonly string[] = [
   "6762747698", // FREEHAND — เมื่อถูกค้นพบ (Finally She Found.)
   "1880021410", // GAVIN:D — ได้แค่เดินมาส่ง (The Last Walk) [feat. BLVCKHEART]
   "1861524534", // Ink Waruntorn — สักวันฉันจะหายดี
+  "1709569470", // IVE — Baddie
   "1850899424", // Jeff Satur — ของขวัญปีใหม่ (Golden Night)
   "6804046964", // JENNIE — HEAVEN
   "6793277028", // JENNIE — Less than a Lover
