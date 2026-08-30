@@ -97,3 +97,34 @@ body {
     grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
   }
 }
+
+/**
+ * The playlist picker swaps between its two steps rather than replacing the
+ * block outright, so it reads as moving into and back out of a language. Kept
+ * short — this sits between a player and the game. The reduced-motion rule
+ * above neutralises both.
+ */
+@keyframes swap-forward {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+}
+
+@keyframes swap-back {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+}
+
+/* Named by where the panel comes from, so a call site cannot get it backwards:
+   stepping into a language slides in from the right, coming back out from the
+   left. */
+.swap-from-right {
+  animation: swap-forward 180ms ease-out;
+}
+
+.swap-from-left {
+  animation: swap-back 180ms ease-out;
+}

@@ -60,6 +60,8 @@ export const STRINGS = {
 
   /* Shown under the chart playlists, which refresh themselves daily. */
   chartHint: { th: "อัปเดตทุกวัน", en: "Refreshed daily" },
+  playlistsCount: { th: "เพลย์ลิสต์", en: "playlists" },
+  back: { th: "ย้อนกลับ", en: "Back" },
 
   difficulty: { th: "ความยาก", en: "Difficulty" },
   difficultyEasy: { th: "ง่าย", en: "Easy" },
