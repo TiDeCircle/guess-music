@@ -12,7 +12,7 @@ export const INTL_ARTISTS = [
   "Red Hot Chili Peppers",
   "Maroon 5",
   "Adele",
-  "Beyonce",
+  "Beyoncé",
   "Rihanna",
   "Bruno Mars",
   "Taylor Swift",

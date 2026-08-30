@@ -39,6 +39,13 @@ export function PlayScreen({
 
   const loading = room.phase === "loading";
   const myAnswer = playerId && room.answeredPlayerIds.includes(playerId);
+  /**
+   * In artist mode every option is by the same act, so the artist line carries
+   * no information — and worse, it leaks: a collaboration is credited under the
+   * lead artist's id but displayed as "X & Y", which makes that one option
+   * visibly different from the rest.
+   */
+  const showArtist = room.config.source.kind !== "artist";
 
   return (
     <div className="flex flex-col gap-8">
@@ -107,13 +114,15 @@ export function PlayScreen({
                   <span className="text-[0.9375rem] font-medium break-words md:text-[length:var(--text-body)]">
                     {choice.title}
                   </span>
-                  <span
-                    className={`label mt-3 md:mt-4 ${
-                      isPicked ? "text-grey-300" : "text-grey-500"
-                    }`}
-                  >
-                    {choice.artist}
-                  </span>
+                  {showArtist && (
+                    <span
+                      className={`label mt-3 md:mt-4 ${
+                        isPicked ? "text-grey-300" : "text-grey-500"
+                      }`}
+                    >
+                      {choice.artist}
+                    </span>
+                  )}
                 </button>
               );
             })}

@@ -22,13 +22,15 @@ async function main() {
         difficulty: DIFFICULTIES.hard,
         rng: makeRng(3),
       });
-      const allSame = rounds.every((r) =>
-        r.choices.every((c) => c.artist === r.answer.artist),
-      );
+      // Names vary on collaborations even when the id does not, which is why
+      // the play screen hides the artist line in this mode. What matters here
+      // is that the pool really is one act.
+      const ids = new Set(pool.map((t) => t.artistId));
+      const names = new Set(pool.map((t) => t.artist));
       console.log(
         `${artist.padEnd(18)} id=${artistIdFor(artist) ?? "-"} ` +
           `${String(pool.length).padStart(3)} songs | rounds ${rounds.length}/10 | ` +
-          `every option same artist: ${allSame} | ${Date.now() - started}ms`,
+          `artistIds ${ids.size} / credited names ${names.size} | ${Date.now() - started}ms`,
       );
       const first = rounds[0];
       if (first) {
