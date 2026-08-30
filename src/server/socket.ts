@@ -10,7 +10,7 @@ import {
   type ServerToClientEvents,
 } from "@/shared/protocol";
 import { RoomError, RoomStore, toRoomState, type Room } from "./rooms";
-import { EmptyCatalogError } from "./catalog";
+import { EmptyCatalogError, ThinArtistError } from "./catalog";
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
@@ -164,7 +164,10 @@ const roomChannel = (code: string) => `room:${code}`;
 
 function messageFor(err: unknown): string {
   if (err instanceof RoomError) return err.message;
-  if (err instanceof EmptyCatalogError) return "playlist นี้ยังไม่มีเพลง ลองอันอื่น";
+  if (err instanceof ThinArtistError) {
+    return `${err.artist} มีเพลงใน iTunes ไม่พอเล่น ลองศิลปินคนอื่น`;
+  }
+  if (err instanceof EmptyCatalogError) return "ตัวเลือกนี้ยังไม่มีเพลง ลองอันอื่น";
   // Anything else is ours to fix, not the player's to read.
   console.error("[socket]", err);
   return "เกิดข้อผิดพลาด ลองใหม่อีกครั้ง";

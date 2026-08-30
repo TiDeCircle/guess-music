@@ -26,6 +26,12 @@ export type PlaylistSource =
       script?: "thai" | "hangul";
     }
   | {
+      /** An exact, hand-picked set of recordings, named by iTunes track id. */
+      kind: "tracks";
+      country: string;
+      trackIds: readonly string[];
+    }
+  | {
       kind: "artists";
       country: string;
       artists: readonly string[];

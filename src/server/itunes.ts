@@ -1,4 +1,5 @@
 import type { Track } from "@/shared/types";
+import { ARTIST_IDS } from "@/data/seeds/artist-ids";
 
 /**
  * iTunes client. Two endpoints are used:
@@ -34,6 +35,12 @@ const MIN_TRACKS_PER_ARTIST = 4;
 
 /** The lookup endpoint takes many ids at once; this stays well inside it. */
 const LOOKUP_BATCH = 150;
+
+/**
+ * How many songs to pull for a single artist. Artist mode draws every round and
+ * every decoy from this one pool, so it needs to be deep.
+ */
+const ARTIST_LOOKUP_LIMIT = 60;
 
 const REQUEST_TIMEOUT_MS = 8_000;
 
@@ -123,11 +130,70 @@ async function searchArtist(artist: string, country: string): Promise<Track[]> {
   return dedupeByTitle(tracks).slice(0, CACHE_DEPTH_PER_ARTIST);
 }
 
-/** An artist's songs, popularity-first, cached deep enough to filter later. */
+/** Matching key for ARTIST_IDS: case, spaces and punctuation all ignored. */
+const artistKey = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+const ARTIST_ID_BY_KEY = new Map(
+  Object.entries(ARTIST_IDS).map(([name, id]) => [artistKey(name), id]),
+);
+
+export function artistIdFor(name: string): number | undefined {
+  return ARTIST_ID_BY_KEY.get(artistKey(name));
+}
+
+/**
+ * Every song iTunes lists for an artist, by id.
+ *
+ * One request, and — unlike the Search API — one that does not get throttled
+ * into 403s. This is the path artist mode runs on, and the path a named artist
+ * takes once its id is known.
+ */
+export async function getArtistTracksById(
+  artistId: number,
+  country: string,
+): Promise<Track[]> {
+  const key = `${country}:id:${artistId}`;
+  const hit = artistCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+
+  const url = new URL(LOOKUP_URL);
+  url.searchParams.set("id", String(artistId));
+  url.searchParams.set("entity", "song");
+  url.searchParams.set("limit", String(ARTIST_LOOKUP_LIMIT));
+  url.searchParams.set("country", country.toUpperCase());
+
+  const body = await getJson<{ results?: ItunesResult[] }>(url);
+  const tracks: Track[] = [];
+  for (const r of body.results ?? []) {
+    // The first result is the artist record itself, which toTrack rejects.
+    const t = toTrack(r);
+    if (!t) continue;
+    // Apple also lists tracks where this artist is only a guest, and those are
+    // credited to someone else. In artist mode every option is supposed to be
+    // by the same act — a differing artist line under one tile would point
+    // straight at the answer.
+    if (t.artistId !== artistId) continue;
+    tracks.push(t);
+  }
+  const deduped = dedupeByTitle(tracks);
+  artistCache.set(key, { at: Date.now(), value: deduped });
+  return deduped;
+}
+
+/**
+ * An artist's songs, popularity-first, cached deep enough to filter later.
+ *
+ * Prefers the id when one is known, and falls back to searching by name when it
+ * is not — which is what lets the id map be filled in an artist at a time
+ * without any playlist going dark in the meantime.
+ */
 export async function getArtistTracks(
   artist: string,
   country: string,
 ): Promise<Track[]> {
+  const id = artistIdFor(artist);
+  if (id !== undefined) return getArtistTracksById(id, country);
+
   const key = `${country}:${artist.toLowerCase()}`;
   const hit = artistCache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
@@ -191,6 +257,55 @@ export async function getTracksForArtists(
 
 // -------------------------------------------------------------------- charts
 
+/**
+ * Fetch tracks by iTunes id.
+ *
+ * The lookup endpoint takes many ids per request, which is what makes a
+ * hand-picked list of a hundred songs cost one round trip rather than a
+ * hundred. Ids that no longer resolve are simply absent from the response;
+ * the caller gets fewer tracks rather than an error.
+ */
+export async function lookupTracks(
+  ids: readonly string[],
+  country: string,
+): Promise<Track[]> {
+  const tracks: Track[] = [];
+  for (let i = 0; i < ids.length; i += LOOKUP_BATCH) {
+    const url = new URL(LOOKUP_URL);
+    url.searchParams.set("id", ids.slice(i, i + LOOKUP_BATCH).join(","));
+    url.searchParams.set("country", country.toUpperCase());
+    url.searchParams.set("entity", "song");
+    const body = await getJson<{ results?: ItunesResult[] }>(url);
+    for (const r of body.results ?? []) {
+      const t = toTrack(r);
+      if (t) tracks.push(t);
+    }
+  }
+  return tracks;
+}
+
+/** Cached list of hand-picked tracks, keyed the same way charts are. */
+const fixedCache = new Map<string, CacheEntry<Track[]>>();
+
+/**
+ * A curated set of exact songs, resolved from ids.
+ *
+ * Unlike an artist search this cannot drift: the list names the recordings, so
+ * what plays is what was chosen. Cached for a day like everything else.
+ */
+export async function getFixedTracks(
+  key: string,
+  ids: readonly string[],
+  country: string,
+): Promise<Track[]> {
+  const hit = fixedCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+
+  const tracks = dedupeByTitle(await lookupTracks(ids, country));
+  fixedCache.set(key, { at: Date.now(), value: tracks });
+  return tracks;
+}
+
 type ChartFeed = { feed?: { results?: Array<{ id?: string }> } };
 
 /**
@@ -213,20 +328,7 @@ export async function getChartTracks(
     .map((r) => r.id)
     .filter((id): id is string => Boolean(id));
 
-  const tracks: Track[] = [];
-  for (let i = 0; i < ids.length; i += LOOKUP_BATCH) {
-    const url = new URL(LOOKUP_URL);
-    url.searchParams.set("id", ids.slice(i, i + LOOKUP_BATCH).join(","));
-    url.searchParams.set("country", country.toUpperCase());
-    url.searchParams.set("entity", "song");
-    const body = await getJson<{ results?: ItunesResult[] }>(url);
-    for (const r of body.results ?? []) {
-      const t = toTrack(r);
-      if (t) tracks.push(t);
-    }
-  }
-
-  const deduped = dedupeByTitle(tracks);
+  const deduped = dedupeByTitle(await lookupTracks(ids, country));
   chartCache.set(key, { at: Date.now(), value: deduped });
   return deduped;
 }
@@ -235,6 +337,7 @@ export async function getChartTracks(
 export function clearItunesCache(): void {
   artistCache.clear();
   chartCache.clear();
+  fixedCache.clear();
 }
 
 export const ITUNES_TUNING = {

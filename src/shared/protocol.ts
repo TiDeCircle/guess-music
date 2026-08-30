@@ -54,8 +54,17 @@ export const joinRoomSchema = z.object({
   sessionId: z.string().min(8).max(64).optional(),
 });
 
+/**
+ * The artist branch carries a name, not a free search term: the server checks
+ * it against the shipped artist list before it reaches iTunes.
+ */
+export const sourceSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("playlist"), playlist: playlistSchema }),
+  z.object({ kind: z.literal("artist"), artist: z.string().min(1).max(64) }),
+]);
+
 export const configSchema = z.object({
-  playlist: playlistSchema,
+  source: sourceSchema,
   difficulty: difficultySchema,
   roundCount: z.number().int().min(3).max(20),
 });

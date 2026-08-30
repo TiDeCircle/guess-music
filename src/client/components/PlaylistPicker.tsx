@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import type { PlaylistGroup, PlaylistId } from "@/shared/types";
+import { useMemo, useState } from "react";
+import type { PlaylistGroup, PlaylistId, SongSource } from "@/shared/types";
 import { PLAYLISTS, PLAYLIST_GROUPS } from "@/data/seeds";
+import { ARTISTS } from "@/data/seeds/artists";
 import { useLang, type StringKey } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
 
@@ -12,30 +13,37 @@ const GROUP_LABEL: Record<PlaylistGroup, StringKey> = {
   kpop: "groupKpop",
 };
 
+/** Which panel is open. `null` is the top level. */
+type Step = PlaylistGroup | "artist" | null;
+
 /**
- * Choosing a Playlist in two steps: the language first, then the Playlist.
+ * Choosing what a Match plays, in two steps.
  *
- * Nine options laid out at once left half the grid empty — two of the three
- * groups hold only two Playlists — and a sparse grid reads as unfinished rather
+ * Nine playlists laid out at once left half the grid empty — two of the three
+ * language groups hold only two — and a sparse grid reads as unfinished rather
  * than spacious. Split in two, each step is full.
  *
- * Picking a Playlist returns to the language step on purpose: that step doubles
- * as the summary, naming the current choice under its own language, so the
- * lobby always shows what the room is about to play without a separate line
- * repeating it.
+ * Picking returns to the top step on purpose: that step names the current
+ * choice under its own heading, so it doubles as the summary and the lobby
+ * never needs a separate line repeating what the room is about to play.
  */
 export function PlaylistPicker({
   value,
   disabled,
   onSelect,
 }: {
-  value: PlaylistId;
+  value: SongSource;
   disabled: boolean;
-  onSelect: (id: PlaylistId) => void;
+  onSelect: (source: SongSource) => void;
 }) {
   const { t } = useLang();
-  const [openGroup, setOpenGroup] = useState<PlaylistGroup | null>(null);
-  const selectedGroup = PLAYLISTS[value].group;
+  const [step, setStep] = useState<Step>(null);
+  const [filter, setFilter] = useState("");
+
+  const label =
+    value.kind === "artist"
+      ? value.artist
+      : t(`playlist.${value.playlist}` as StringKey);
 
   // A player who cannot change it does not need a navigator, only the answer.
   if (disabled) {
@@ -43,39 +51,94 @@ export function PlaylistPicker({
       <div>
         <FieldLabel>{t("playlist")}</FieldLabel>
         <p className="mt-2 py-4" style={{ fontSize: "var(--text-body)" }}>
-          {t(`playlist.${value}` as StringKey)}
+          {label}
         </p>
       </div>
     );
   }
 
-  if (openGroup === null) {
+  if (step === null) {
     return (
       <div>
         <FieldLabel>{t("playlist")}</FieldLabel>
-        <div className="swap-from-left mt-2 grid grid-cols-3 gap-px bg-ink">
-          {PLAYLIST_GROUPS.map(({ group, ids }) => {
-            const holdsSelection = group === selectedGroup;
+        <div className="swap-from-left mt-2 grid grid-cols-2 gap-px bg-ink sm:grid-cols-4">
+          {PLAYLIST_GROUPS.map(({ group, ids }) => (
+            <TopCell
+              key={group}
+              title={t(GROUP_LABEL[group])}
+              active={value.kind === "playlist" && PLAYLISTS[value.playlist].group === group}
+              detail={
+                value.kind === "playlist" && PLAYLISTS[value.playlist].group === group
+                  ? label
+                  : `${ids.length} ${t("playlistsCount")}`
+              }
+              onClick={() => setStep(group)}
+            />
+          ))}
+          <TopCell
+            title={t("byArtist")}
+            active={value.kind === "artist"}
+            detail={
+              value.kind === "artist"
+                ? label
+                : `${ARTISTS.length} ${t("artistsCount")}`
+            }
+            onClick={() => {
+              setFilter("");
+              setStep("artist");
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "artist") {
+    const query = filter.trim().toLowerCase();
+    const shown = query
+      ? ARTISTS.filter((a) => a.name.toLowerCase().includes(query))
+      : ARTISTS;
+
+    return (
+      <div>
+        <PanelHeader title={t("byArtist")} onBack={() => setStep(null)} />
+        <p className="label mt-2 text-grey-500">{t("byArtistHint")}</p>
+
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={t("filterArtists")}
+          autoComplete="off"
+          className="mt-3 w-full border-b border-ink bg-transparent pb-2 outline-none placeholder:text-grey-300 focus:border-accent"
+          style={{ fontSize: "var(--text-body)" }}
+        />
+
+        {/* The list is long by design, so it scrolls inside its own box rather
+            than pushing the start button off the screen. */}
+        <div className="swap-from-right mt-3 max-h-72 overflow-y-auto border-y border-ink">
+          {shown.length === 0 && (
+            <p className="label px-3 py-4 text-grey-500">{t("noArtists")}</p>
+          )}
+          {shown.map((a) => {
+            const active = value.kind === "artist" && value.artist === a.name;
             return (
               <button
-                key={group}
+                key={a.name}
                 type="button"
-                onClick={() => setOpenGroup(group)}
-                className={`flex min-h-24 flex-col justify-between p-3 text-left transition-colors md:p-4 ${
-                  holdsSelection
-                    ? "bg-ink text-paper"
-                    : "bg-paper text-ink hover:bg-grey-100"
+                aria-pressed={active}
+                onClick={() => {
+                  onSelect({ kind: "artist", artist: a.name });
+                  setStep(null);
+                }}
+                className={`flex w-full items-baseline justify-between border-b border-grey-300 px-3 py-3 text-left transition-colors last:border-b-0 ${
+                  active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
                 }`}
               >
-                <span className="label">{t(GROUP_LABEL[group])}</span>
+                <span style={{ fontSize: "var(--text-body)" }}>{a.name}</span>
                 <span
-                  className={`mt-4 block text-[0.9375rem] ${
-                    holdsSelection ? "" : "text-grey-500"
-                  }`}
+                  className={`label ${active ? "text-grey-300" : "text-grey-500"}`}
                 >
-                  {holdsSelection
-                    ? t(`playlist.${value}` as StringKey)
-                    : `${ids.length} ${t("playlistsCount")}`}
+                  {t(GROUP_LABEL[a.group])}
                 </span>
               </button>
             );
@@ -85,37 +148,25 @@ export function PlaylistPicker({
     );
   }
 
-  const ids = PLAYLIST_GROUPS.find((g) => g.group === openGroup)!.ids;
+  const ids = PLAYLIST_GROUPS.find((g) => g.group === step)!.ids;
 
   return (
     <div>
-      <div className="flex items-baseline justify-between border-t border-ink pt-2">
-        <span className="label text-grey-500">{t(GROUP_LABEL[openGroup])}</span>
-        <button
-          type="button"
-          onClick={() => setOpenGroup(null)}
-          className="label text-grey-500 transition-colors hover:text-ink"
-        >
-          ← {t("back")}
-        </button>
-      </div>
-
+      <PanelHeader title={t(GROUP_LABEL[step])} onBack={() => setStep(null)} />
       <div className="swap-from-right mt-2 grid grid-cols-1 gap-px bg-ink sm:grid-cols-2 lg:grid-cols-3">
         {ids.map((id) => {
-          const active = id === value;
+          const active = value.kind === "playlist" && value.playlist === id;
           return (
             <button
               key={id}
               type="button"
               aria-pressed={active}
               onClick={() => {
-                onSelect(id);
-                setOpenGroup(null);
+                onSelect({ kind: "playlist", playlist: id });
+                setStep(null);
               }}
               className={`flex min-h-20 flex-col justify-between p-3 text-left transition-colors md:p-4 ${
-                active
-                  ? "bg-ink text-paper"
-                  : "bg-paper text-ink hover:bg-grey-100"
+                active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
               }`}
             >
               <span className="text-[0.9375rem] font-medium">
@@ -124,22 +175,69 @@ export function PlaylistPicker({
               <span
                 className={`label mt-3 ${active ? "text-grey-300" : "text-grey-500"}`}
               >
-                {PLAYLISTS[id].source.kind === "chart" ? t("chartHint") : " "}
+                {PLAYLISTS[id].source.kind === "chart" ? t("chartHint") : " "}
               </span>
             </button>
           );
         })}
         {/* Keeps the grid's black lines from showing through a short last row. */}
-        {Array.from(
-          { length: (3 - (ids.length % 3)) % 3 },
-          (_, i) => (
-            <div key={`blank-${i}`} aria-hidden className="hidden bg-paper lg:block" />
-          ),
-        )}
-        {ids.length % 2 === 1 && (
-          <div aria-hidden className="hidden bg-paper sm:block lg:hidden" />
-        )}
+        {blanks(ids.length, 3).map((k) => (
+          <div key={k} aria-hidden className="hidden bg-paper lg:block" />
+        ))}
+        {blanks(ids.length, 2).map((k) => (
+          <div key={k} aria-hidden className="hidden bg-paper sm:block lg:hidden" />
+        ))}
       </div>
+    </div>
+  );
+}
+
+function blanks(count: number, columns: number): string[] {
+  const missing = (columns - (count % columns)) % columns;
+  return Array.from({ length: missing }, (_, i) => `blank-${columns}-${i}`);
+}
+
+function TopCell({
+  title,
+  detail,
+  active,
+  onClick,
+}: {
+  title: string;
+  detail: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-24 flex-col justify-between p-3 text-left transition-colors md:p-4 ${
+        active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
+      }`}
+    >
+      <span className="label">{title}</span>
+      <span
+        className={`mt-4 block text-[0.9375rem] ${active ? "" : "text-grey-500"}`}
+      >
+        {detail}
+      </span>
+    </button>
+  );
+}
+
+function PanelHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  const { t } = useLang();
+  return (
+    <div className="flex items-baseline justify-between border-t border-ink pt-2">
+      <span className="label text-grey-500">{title}</span>
+      <button
+        type="button"
+        onClick={onBack}
+        className="label text-grey-500 transition-colors hover:text-ink"
+      >
+        ← {t("back")}
+      </button>
     </div>
   );
 }

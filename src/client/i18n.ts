@@ -61,6 +61,14 @@ export const STRINGS = {
   /* Shown under the chart playlists, which refresh themselves daily. */
   chartHint: { th: "อัปเดตทุกวัน", en: "Refreshed daily" },
   playlistsCount: { th: "เพลย์ลิสต์", en: "playlists" },
+  artistsCount: { th: "ศิลปิน", en: "artists" },
+  byArtist: { th: "ศิลปิน", en: "By artist" },
+  byArtistHint: {
+    th: "ทุกตัวเลือกจะเป็นเพลงของศิลปินคนเดียวกัน — ฟังเสียงร้องช่วยไม่ได้",
+    en: "Every option is by the same artist — the voice tells you nothing",
+  },
+  filterArtists: { th: "พิมพ์เพื่อค้นชื่อ", en: "Type to filter" },
+  noArtists: { th: "ไม่พบศิลปินที่ตรง", en: "No matching artist" },
   back: { th: "ย้อนกลับ", en: "Back" },
 
   difficulty: { th: "ความยาก", en: "Difficulty" },

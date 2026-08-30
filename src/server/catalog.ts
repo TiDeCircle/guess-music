@@ -1,7 +1,13 @@
-import type { PlaylistId, Track } from "@/shared/types";
+import type { SongSource, Track } from "@/shared/types";
 import { PLAYLISTS } from "@/data/seeds";
+import { isKnownArtist } from "@/data/seeds/artists";
 import { shuffle, type Rng } from "@/shared/rng";
-import { getChartTracks, getTracksForArtists } from "./itunes";
+import {
+  getArtistTracks,
+  getChartTracks,
+  getFixedTracks,
+  getTracksForArtists,
+} from "./itunes";
 
 /**
  * How many artists to pull for one Match. Ten rounds need ten answers plus
@@ -52,9 +58,22 @@ export function filterToScript(
 }
 
 export class EmptyCatalogError extends Error {
-  constructor(playlist: PlaylistId) {
-    super(`no playable tracks for playlist ${playlist}`);
+  constructor(label: string) {
+    super(`no playable tracks for ${label}`);
     this.name = "EmptyCatalogError";
+  }
+}
+
+/**
+ * An artist mode match needs enough songs that no round has to reuse one — ten
+ * answers plus three decoys each, with the pool shared across all of them.
+ */
+const MIN_ARTIST_POOL = 14;
+
+export class ThinArtistError extends Error {
+  constructor(readonly artist: string) {
+    super(`not enough songs for ${artist}`);
+    this.name = "ThinArtistError";
   }
 }
 
@@ -67,15 +86,22 @@ export class EmptyCatalogError extends Error {
  * chart is the chart — and rely on that filter alone.
  */
 export async function buildPool(
-  playlist: PlaylistId,
+  songSource: SongSource,
   rng: Rng,
 ): Promise<Track[]> {
+  if (songSource.kind === "artist") return buildArtistPool(songSource.artist);
+
+  const playlist = songSource.playlist;
   const { source } = PLAYLISTS[playlist];
   let tracks: Track[];
 
   if (source.kind === "chart") {
     const chart = await getChartTracks(source.country, CHART_DEPTH);
     tracks = source.script ? filterToScript(chart, source.script) : chart;
+  } else if (source.kind === "tracks") {
+    // No randomisation here: the list is the playlist. Variety between matches
+    // comes from the recently-played filter in the round builder.
+    tracks = await getFixedTracks(playlist, source.trackIds, source.country);
   } else {
     const window = { from: source.yearFrom, to: source.yearTo };
     const ordered = shuffle(source.artists, rng);
@@ -108,6 +134,24 @@ export async function buildPool(
 
   if (pool.length === 0) throw new EmptyCatalogError(playlist);
   return pool;
+}
+
+/**
+ * Every song by one artist.
+ *
+ * The whole Match comes from here, decoys included, which is what makes artist
+ * mode hard: recognising the voice tells you nothing. A thin catalogue is
+ * refused up front rather than producing a Match that repeats songs.
+ */
+async function buildArtistPool(artist: string): Promise<Track[]> {
+  // The client may only name an artist the game ships, so a socket payload
+  // cannot become an arbitrary query aimed at Apple.
+  if (!isKnownArtist(artist)) throw new EmptyCatalogError(artist);
+
+  const tracks = await getArtistTracks(artist, "TH");
+  if (tracks.length === 0) throw new EmptyCatalogError(artist);
+  if (tracks.length < MIN_ARTIST_POOL) throw new ThinArtistError(artist);
+  return tracks;
 }
 
 export const CATALOG_TUNING = { ARTISTS_PER_MATCH, MIN_POOL, CHART_DEPTH };

@@ -63,8 +63,19 @@ export type Player = {
  */
 export type RoomPhase = "lobby" | "loading" | "playing" | "reveal" | "finished";
 
+/**
+ * Where a Match draws its songs from.
+ *
+ * A Playlist is a curated set; an Artist turns the game into "which song of
+ * theirs is this?", where every wrong option is by the same act and the voice
+ * gives nothing away.
+ */
+export type SongSource =
+  | { kind: "playlist"; playlist: PlaylistId }
+  | { kind: "artist"; artist: string };
+
 export type MatchConfig = {
-  playlist: PlaylistId;
+  source: SongSource;
   difficulty: DifficultyId;
   roundCount: number;
 };

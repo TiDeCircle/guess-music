@@ -96,9 +96,9 @@ export function LobbyScreen({
 
       <section className="flex flex-col gap-8 md:col-span-7">
         <PlaylistPicker
-          value={room.config.playlist}
+          value={room.config.source}
           disabled={!isHost}
-          onSelect={(playlist) => patch({ playlist })}
+          onSelect={(source) => patch({ source })}
         />
 
         <div>

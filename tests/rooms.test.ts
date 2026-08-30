@@ -59,7 +59,7 @@ function seed(n: number) {
 
 async function startMedium(room: ReturnType<typeof seed>["room"], hostId: string) {
   store.setConfig(room, hostId, {
-    playlist: "thai-classic",
+    source: { kind: "playlist", playlist: "thai-classic" },
     difficulty: "medium",
     roundCount: 3,
   });
@@ -89,11 +89,24 @@ describe("room lifecycle", () => {
     expect(room.players.get(room.hostId)?.connected).toBe(true);
   });
 
+  it("accepts an artist as the song source", () => {
+    const { room, ids } = seed(1);
+    store.setConfig(room, ids[0]!, {
+      source: { kind: "artist", artist: "Bodyslam" },
+      difficulty: "hard",
+      roundCount: 5,
+    });
+    expect(toRoomState(room).config.source).toEqual({
+      kind: "artist",
+      artist: "Bodyslam",
+    });
+  });
+
   it("only lets the host change the config", () => {
     const { room, ids } = seed(2);
     expect(() =>
       store.setConfig(room, ids[1]!, {
-        playlist: "kpop-classic",
+        source: { kind: "playlist", playlist: "kpop-classic" },
         difficulty: "hard",
         roundCount: 5,
       }),

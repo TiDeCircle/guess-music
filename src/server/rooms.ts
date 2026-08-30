@@ -152,7 +152,7 @@ export class RoomStore {
       hostId: player.id,
       players: new Map([[player.id, player]]),
       config: {
-        playlist: DEFAULT_PLAYLIST,
+        source: { kind: "playlist", playlist: DEFAULT_PLAYLIST },
         difficulty: DEFAULT_DIFFICULTY,
         roundCount: DEFAULT_ROUND_COUNT,
       },
@@ -314,7 +314,7 @@ export class RoomStore {
     }
 
     const rng = makeRng(Date.now() ^ randomInt(2 ** 31));
-    const pool = await buildPool(room.config.playlist, rng);
+    const pool = await buildPool(room.config.source, rng);
 
     const rounds = quizMode.buildRounds({
       pool,

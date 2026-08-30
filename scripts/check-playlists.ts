@@ -18,7 +18,7 @@ async function main() {
     const started = Date.now();
     try {
       const rng = makeRng(42);
-      const pool = await buildPool(id, rng);
+      const pool = await buildPool({ kind: "playlist", playlist: id }, rng);
       const artists = new Set(pool.map((t) => t.artistId)).size;
       const years = pool.map((t) => t.year).filter(Boolean);
       const span = years.length
