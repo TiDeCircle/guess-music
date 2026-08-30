@@ -265,6 +265,18 @@ describe("lockstep sequence", () => {
     expect(state.round!.choices).toHaveLength(4);
   });
 
+  it("tells the client the round's shape before the clock starts", async () => {
+    const { room, ids } = seed(1);
+    await startMedium(room, ids[0]!);
+    // Still in `loading`: no deadline yet, but the client must be able to draw
+    // the timer, so the clip and window lengths have to be there already.
+    const state = toRoomState(room);
+    expect(state.phase).toBe("loading");
+    expect(state.round!.deadlineAt).toBe(0);
+    expect(state.round!.clipMs).toBeGreaterThan(0);
+    expect(state.round!.answerWindowMs).toBeGreaterThanOrEqual(state.round!.clipMs);
+  });
+
   it("resets scores when a new match starts", async () => {
     const { room, ids } = seed(1);
     await startMedium(room, ids[0]!);

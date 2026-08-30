@@ -59,6 +59,9 @@ type StoredSession = { code: string; sessionId: string; name: string };
 
 export type ConnectionStatus = "connecting" | "online" | "offline";
 
+/** How one Round went for this player. Undefined means it has not happened. */
+export type RoundOutcome = "correct" | "wrong" | "missed";
+
 function readSession(): StoredSession | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
@@ -96,6 +99,7 @@ export function useGame() {
   const [error, setError] = useState<string | null>(null);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [volumeStep, setVolumeStepState] = useState(DEFAULT_VOLUME_STEP);
+  const [history, setHistory] = useState<RoundOutcome[]>([]);
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
@@ -182,6 +186,24 @@ export function useGame() {
   const phase = room?.phase;
   const round = room?.round ?? null;
   const revealNext = room?.reveal?.nextPreviewUrl ?? null;
+  const reveal = room?.reveal ?? null;
+
+  // Record how each Round went as its reveal lands. The server sends only the
+  // current Round's results, so a running history has to be kept here.
+  useEffect(() => {
+    if (!reveal || !playerId) return;
+    setHistory((prev) => {
+      if (prev[reveal.index] !== undefined) return prev;
+      const mine = reveal.results.find((r) => r.playerId === playerId);
+      const next = prev.slice();
+      next[reveal.index] = mine?.correct
+        ? "correct"
+        : mine?.choiceId
+          ? "wrong"
+          : "missed";
+      return next;
+    });
+  }, [reveal, playerId]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -268,6 +290,7 @@ export function useGame() {
 
   const startMatch = useCallback(() => {
     setError(null);
+    setHistory([]);
     readyForRef.current = -1;
     playedRef.current = -1;
     socketRef.current?.emit("match:start");
@@ -305,6 +328,7 @@ export function useGame() {
     unlockAudio,
     volumeStep,
     setVolumeStep,
+    history,
     createRoom,
     joinRoom,
     setConfig,

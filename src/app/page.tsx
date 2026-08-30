@@ -96,6 +96,7 @@ export default function Page() {
         <PlayScreen
           room={game.room}
           playerId={game.playerId}
+          history={game.history}
           serverNow={game.serverNow}
           onAnswer={game.answer}
         />

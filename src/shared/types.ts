@@ -77,6 +77,12 @@ export type RoundView = {
   /** How long the Preview stays audible. */
   clipMs: number;
   /**
+   * How long answers are accepted. Sent separately from the deadline because
+   * the client draws the round's shape during `loading`, before the server has
+   * started the clock and while the deadline is therefore still unset.
+   */
+  answerWindowMs: number;
+  /**
    * Server clock, in ms since epoch. The client counts down to this on its own
    * so the timer runs at 60fps without a packet per second; it corrects for
    * clock skew using the offset measured at join.

@@ -550,6 +550,7 @@ export function toRoomState(room: Room): RoomState {
         // told the answer before the reveal.
         choices: plan.choices,
         clipMs: plan.clipMs,
+        answerWindowMs: plan.answerWindowMs,
         deadlineAt: match.deadlineAt,
         startAt: match.startAt,
         previewUrl: plan.answer.previewUrl,
