@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LANGS, useLang } from "@/client/i18n";
 import type { ConnectionStatus } from "@/client/useGame";
+import { VolumeControl } from "./VolumeControl";
 
 /**
  * The frame every screen sits in: a hairline header, a 12-column field, and
@@ -11,9 +12,13 @@ import type { ConnectionStatus } from "@/client/useGame";
  */
 export function Shell({
   status,
+  volumeStep,
+  onVolumeChange,
   children,
 }: {
   status: ConnectionStatus;
+  volumeStep: number;
+  onVolumeChange: (step: number) => void;
   children: ReactNode;
 }) {
   const { lang, setLang, t } = useLang();
@@ -24,7 +29,9 @@ export function Shell({
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 md:px-8">
           <span className="label font-bold">{t("appName")}</span>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
+            <VolumeControl step={volumeStep} onChange={onVolumeChange} />
+
             <span className="label flex items-center gap-2 text-grey-500">
               <span
                 aria-hidden

@@ -39,7 +39,11 @@ export default function Page() {
   }, [game.error]);
 
   return (
-    <Shell status={game.status}>
+    <Shell
+      status={game.status}
+      volumeStep={game.volumeStep}
+      onVolumeChange={game.setVolumeStep}
+    >
       {game.error && (
         <div
           role="alert"

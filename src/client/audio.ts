@@ -20,6 +20,20 @@ export class AudioEngine {
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
   private loadedUrl: string | null = null;
   private unlocked = false;
+  /** Linear amplitude, 0..1. Kept here so it survives element creation. */
+  private volume = 1;
+
+  /**
+   * Set playback volume as a linear amplitude.
+   *
+   * The element keeps this across src changes, but we hold it too: the element
+   * is created lazily, and a volume set before the first round would otherwise
+   * be lost.
+   */
+  setVolume(value: number): void {
+    this.volume = Math.min(Math.max(value, 0), 1);
+    if (this.el) this.el.volume = this.volume;
+  }
 
   isUnlocked(): boolean {
     return this.unlocked;
@@ -37,6 +51,7 @@ export class AudioEngine {
       await el.play();
       el.pause();
       el.muted = false;
+      el.volume = this.volume;
       el.currentTime = 0;
       this.unlocked = true;
       this.loadedUrl = null;
@@ -137,6 +152,7 @@ export class AudioEngine {
     if (!this.el) {
       this.el = new Audio();
       this.el.preload = "auto";
+      this.el.volume = this.volume;
     }
     return this.el;
   }

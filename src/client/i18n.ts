@@ -70,6 +70,10 @@ export const STRINGS = {
   multiplier: { th: "ตัวคูณคะแนน", en: "Multiplier" },
   rounds: { th: "จำนวนข้อ", en: "Rounds" },
 
+  volume: { th: "ระดับเสียง", en: "Volume" },
+  volumeUp: { th: "เพิ่มเสียง", en: "Louder" },
+  volumeDown: { th: "ลดเสียง", en: "Quieter" },
+
   unlockAudio: { th: "แตะเพื่อเปิดเสียง", en: "Tap to enable sound" },
   unlockHint: {
     th: "เบราว์เซอร์ต้องให้แตะหนึ่งครั้งก่อนถึงจะเล่นเสียงได้",

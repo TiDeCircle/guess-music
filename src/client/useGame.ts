@@ -14,6 +14,43 @@ import { AudioEngine } from "./audio";
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 const SESSION_KEY = "guess-music.session";
+const VOLUME_KEY = "guess-music.volume";
+
+/** How many blocks the volume control shows, and its maximum step. */
+export const VOLUME_STEPS = 5;
+
+/** Loud enough to hear, quiet enough not to startle a room full of phones. */
+const DEFAULT_VOLUME_STEP = 4;
+
+/**
+ * Steps are spaced by amplitude squared.
+ *
+ * `HTMLMediaElement.volume` is a linear amplitude, but loudness is not heard
+ * linearly: evenly spaced amplitudes bunch up at the top, so the first press of
+ * minus would barely register while the last would cut the sound out. Squaring
+ * spreads the steps out the way an ear expects.
+ */
+/**
+ * Interpret whatever is in storage as a volume step.
+ *
+ * `null` means the visitor has never chosen, which is not the same as choosing
+ * silence — and `Number(null)` is 0, so conflating the two hands every
+ * first-time player a muted game.
+ */
+export function readVolumeStep(raw: string | null): number {
+  // Both `null` and `""` convert to 0, and both mean "nothing was stored".
+  if (raw === null || raw.trim() === "") return DEFAULT_VOLUME_STEP;
+  const saved = Number(raw);
+  if (!Number.isInteger(saved) || saved < 0 || saved > VOLUME_STEPS) {
+    return DEFAULT_VOLUME_STEP;
+  }
+  return saved;
+}
+
+export function stepToVolume(step: number): number {
+  const clamped = Math.min(Math.max(step, 0), VOLUME_STEPS);
+  return (clamped / VOLUME_STEPS) ** 2;
+}
 
 /** How many round trips to sample when measuring clock skew. */
 const CLOCK_SAMPLES = 5;
@@ -58,10 +95,35 @@ export function useGame() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [volumeStep, setVolumeStepState] = useState(DEFAULT_VOLUME_STEP);
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
   }
+
+  // Read the saved level after mount, not during render: the server has no
+  // idea what this visitor picked last time.
+  useEffect(() => {
+    let step = DEFAULT_VOLUME_STEP;
+    try {
+      step = readVolumeStep(localStorage.getItem(VOLUME_KEY));
+    } catch {
+      // Blocked site data; the default is fine.
+    }
+    setVolumeStepState(step);
+    audioRef.current?.setVolume(stepToVolume(step));
+  }, []);
+
+  const setVolumeStep = useCallback((next: number) => {
+    const step = Math.min(Math.max(Math.round(next), 0), VOLUME_STEPS);
+    setVolumeStepState(step);
+    audioRef.current?.setVolume(stepToVolume(step));
+    try {
+      localStorage.setItem(VOLUME_KEY, String(step));
+    } catch {
+      // See above.
+    }
+  }, []);
 
   // ------------------------------------------------------------------ socket
 
@@ -241,6 +303,8 @@ export function useGame() {
     clearError: () => setError(null),
     audioUnlocked,
     unlockAudio,
+    volumeStep,
+    setVolumeStep,
     createRoom,
     joinRoom,
     setConfig,
