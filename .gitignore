@@ -5,3 +5,8 @@ out/
 next-env.d.ts
 .env*.local
 .DS_Store
+
+# Skills installed by `npx skills add`. Vendored third-party content, restored
+# from skills-lock.json rather than tracked — the lock file is the record.
+.agents/
+.claude/

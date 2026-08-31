@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "improve-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/improve-animations/SKILL.md",
+      "computedHash": "eeb219a407e325b687af88db25771cc3018e3148245604112f5ac6990b6fd79c"
+    },
+    "sounds-on-the-web": {
+      "source": "raphaelsalaja/skill",
+      "sourceType": "github",
+      "skillPath": "skills/sounds-on-the-web/SKILL.md",
+      "computedHash": "caf809d1a9e33e01b4a0be68c9a6f1b789f5742d84d120abc09842e9ba859116"
+    }
+  }
+}
