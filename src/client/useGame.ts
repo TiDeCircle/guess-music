@@ -10,8 +10,9 @@ import type {
   JoinResult,
   ServerToClientEvents,
 } from "@/shared/protocol";
-import { unlockedMs } from "@/shared/modes";
+import { MODES, unlockedMs } from "@/shared/modes";
 import { AudioEngine } from "./audio";
+import { SoundEngine, outcomeCue } from "./sfx";
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -87,6 +88,7 @@ function writeSession(session: StoredSession | null): void {
 export function useGame() {
   const socketRef = useRef<GameSocket | null>(null);
   const audioRef = useRef<AudioEngine | null>(null);
+  const sfxRef = useRef<SoundEngine | null>(null);
   /** Server time minus client time, in ms. */
   const clockOffsetRef = useRef(0);
   const playerIdRef = useRef<string | null>(null);
@@ -94,6 +96,12 @@ export function useGame() {
   const readyForRef = useRef(-1);
   /** Round and unlock level we have already played, as "index:level". */
   const playedRef = useRef("");
+  /** Round we have already sounded a result for. */
+  const revealedRef = useRef(-1);
+  /** The unlock level we last saw, and the Round it belonged to. */
+  const levelRef = useRef({ index: -1, level: 0 });
+  /** Whether the room's mode types its answers. Read inside `answer`. */
+  const typedModeRef = useRef(false);
 
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [room, setRoom] = useState<RoomState | null>(null);
@@ -117,6 +125,7 @@ export function useGame() {
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
+    sfxRef.current = new SoundEngine();
   }
 
   // Read the saved level after mount, not during render: the server has no
@@ -130,12 +139,14 @@ export function useGame() {
     }
     setVolumeStepState(step);
     audioRef.current?.setVolume(stepToVolume(step));
+    sfxRef.current?.setVolume(stepToVolume(step));
   }, []);
 
   const setVolumeStep = useCallback((next: number) => {
     const step = Math.min(Math.max(Math.round(next), 0), VOLUME_STEPS);
     setVolumeStepState(step);
     audioRef.current?.setVolume(stepToVolume(step));
+    sfxRef.current?.setVolume(stepToVolume(step));
     try {
       localStorage.setItem(VOLUME_KEY, String(step));
     } catch {
@@ -190,6 +201,7 @@ export function useGame() {
       socket.close();
       socketRef.current = null;
       audioRef.current?.dispose();
+      sfxRef.current?.dispose();
     };
   }, []);
 
@@ -220,6 +232,12 @@ export function useGame() {
   const phase = room?.phase;
   const round = room?.round ?? null;
 
+  // `answer` is a stable callback with no dependencies, so the one fact it
+  // needs about the room is mirrored into a ref rather than rebuilding it.
+  useEffect(() => {
+    typedModeRef.current = room ? MODES[room.config.mode].typed : false;
+  }, [room]);
+
   /**
    * How far the clip is unlocked for us, and therefore how much of it plays.
    * Zero-length stages mean Quiz, where the clip never changes.
@@ -241,18 +259,50 @@ export function useGame() {
   // current Round's results, so a running history has to be kept here.
   useEffect(() => {
     if (!reveal || !playerId) return;
+    // Guarded by a ref rather than by the history itself: the cue is a side
+    // effect, and a `setHistory` updater has to stay pure enough to be called
+    // twice.
+    if (revealedRef.current === reveal.index) return;
+    revealedRef.current = reveal.index;
+
+    const mine = reveal.results.find((r) => r.playerId === playerId);
+    const outcome: RoundOutcome = mine?.correct
+      ? "correct"
+      : mine?.choiceId
+        ? "wrong"
+        : "missed";
+    sfxRef.current?.play(outcomeCue(outcome));
+
     setHistory((prev) => {
       if (prev[reveal.index] !== undefined) return prev;
-      const mine = reveal.results.find((r) => r.playerId === playerId);
       const next = prev.slice();
-      next[reveal.index] = mine?.correct
-        ? "correct"
-        : mine?.choiceId
-          ? "wrong"
-          : "missed";
+      next[reveal.index] = outcome;
       return next;
     });
   }, [reveal, playerId]);
+
+  /**
+   * A level bought.
+   *
+   * Fired off the level the server sent back rather than off the tap, so it
+   * lands with the step that grows on screen and never sounds for a purchase
+   * that did not go through. In the co-op mode the whole room hears it, which
+   * is right — the whole room paid for it.
+   */
+  useEffect(() => {
+    if (!round) return;
+    const previous = levelRef.current;
+    levelRef.current = { index: round.index, level: myLevel };
+    if (previous.index === round.index && myLevel > previous.level) {
+      sfxRef.current?.play("unlock");
+    }
+  }, [round, myLevel]);
+
+  // Once a match, and only on the way in: `phase` is a string, so this runs
+  // when the match ends rather than on every broadcast that follows.
+  useEffect(() => {
+    if (phase === "finished") sfxRef.current?.play("finish");
+  }, [phase]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -295,6 +345,11 @@ export function useGame() {
   // ----------------------------------------------------------------- actions
 
   const unlockAudio = useCallback(async () => {
+    // Opened first, and synchronously. This is the same gesture that unlocks
+    // the music, but it has to happen before the `await` below: Safari stops
+    // treating a call as user-initiated once the handler has yielded, so
+    // opening the context after the element would silently fail there.
+    sfxRef.current?.unlock();
     const ok = (await audioRef.current?.unlock()) ?? false;
     setAudioUnlocked(ok);
     return ok;
@@ -352,6 +407,8 @@ export function useGame() {
     setGuessLog({ index: -1, wrong: [] });
     readyForRef.current = -1;
     playedRef.current = "";
+    revealedRef.current = -1;
+    levelRef.current = { index: -1, level: 0 };
     socketRef.current?.emit("match:start");
   }, []);
 
@@ -394,9 +451,16 @@ export function useGame() {
       new Promise<AnswerResult | null>((resolve) => {
         const socket = socketRef.current;
         if (!socket) return resolve(null);
+        // This cue belongs to the tap, not to the round trip: the tile locks in
+        // on screen the moment it is pressed, and the sound has to land with it.
+        sfxRef.current?.play("lock");
         socket.emit("round:answer", { index, guess }, (res: Ack<AnswerResult>) => {
           if (!res.ok) return resolve(null);
           if (!res.data.correct) {
+            // A rejected typed guess is private and is already on screen struck
+            // through, so saying it out loud gives nothing away. The identical
+            // verdict in Quiz is a secret until the reveal and stays one.
+            if (typedModeRef.current) sfxRef.current?.play("wrong");
             setGuessLog((prev) =>
               prev.index === index
                 ? { index, wrong: prev.wrong.includes(guess) ? prev.wrong : [...prev.wrong, guess] }
