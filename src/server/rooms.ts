@@ -51,7 +51,7 @@ const DEFAULT_ROUND_COUNT = 10;
 const RECENT_MATCH_MEMORY = 3;
 
 /**
- * Who the wrong guesses belong to in a shared mode.
+ * Who the unlocks belong to in a shared mode.
  *
  * Player ids are UUIDs, so this can never collide with one.
  */
@@ -84,10 +84,12 @@ type ActiveMatch = {
   deadlineAt: number;
   answers: Map<string, SubmittedAnswer>;
   /**
-   * Wrong choiceIds spent on the current Round, keyed by player id — or by
-   * TEAM_KEY alone when the mode is shared.
+   * How far the clip has been unlocked on the current Round, keyed by player id
+   * — or by TEAM_KEY alone when the mode is shared.
    */
-  wrong: Map<string, string[]>;
+  levels: Map<string, number>;
+  /** Wrong titles already tried, keyed the same way as `levels`. */
+  tried: Map<string, string[]>;
   ready: Set<string>;
 };
 
@@ -402,7 +404,8 @@ export class RoomStore {
       startAt: 0,
       deadlineAt: 0,
       answers: new Map(),
-      wrong: new Map(),
+      levels: new Map(),
+      tried: new Map(),
       ready: new Set(),
     };
 
@@ -426,7 +429,8 @@ export class RoomStore {
     this.clearTimer(room);
 
     match.answers.clear();
-    match.wrong.clear();
+    match.levels.clear();
+    match.tried.clear();
     match.ready.clear();
     match.startAt = 0;
     match.deadlineAt = 0;
@@ -473,21 +477,59 @@ export class RoomStore {
     this.events.onState(room);
   }
 
+  /** Who the current Round's unlocks and score belong to. */
+  private ownerKey(room: Room, playerId: string): string {
+    return MODES[room.config.mode].shared ? TEAM_KEY : playerId;
+  }
+
+  /**
+   * Spend a level to hear more of the Preview.
+   *
+   * Costs nothing but points, and the points are charged when the guess lands:
+   * the level a player is standing on is the tier they will be paid.
+   */
+  unlock(room: Room, playerId: string, index: number): void {
+    const match = room.match;
+    if (!match || room.phase !== "playing") return;
+    if (index !== match.index) return;
+
+    const plan = match.rounds[match.index];
+    if (!plan || plan.stagesMs.length === 0) return;
+
+    const key = this.ownerKey(room, playerId);
+    // Somebody already finished for this owner; there is nothing left to hear.
+    if (this.isDone(room, match, playerId)) return;
+
+    const last = plan.stagesMs.length - 1;
+    const current = match.levels.get(key) ?? 0;
+    if (current >= last) return;
+
+    match.levels.set(key, current + 1);
+    this.events.onState(room);
+  }
+
+  /** Whether this player's Round is already settled. */
+  private isDone(room: Room, match: ActiveMatch, playerId: string): boolean {
+    return MODES[room.config.mode].shared
+      ? match.answers.size > 0
+      : match.answers.has(playerId);
+  }
+
   /**
    * Records a guess and lets the Game Mode decide what it was worth.
    *
    * Nothing here knows what mode is running. It asks `judge` whether the guess
    * ends the Round for whoever made it, and `shared` whether "whoever" means
    * one player or the whole Room. Returns what happened so the caller can tell
-   * the guesser their option was struck out — in a competitive mode that is
-   * private, and broadcasting it would hand everyone else a free elimination.
+   * the guesser — privately, because in the competitive mode a wrong guess is
+   * nobody else's business.
    */
   submitAnswer(
     room: Room,
     playerId: string,
     index: number,
-    choiceId: string,
-  ): { correct: boolean; final: boolean } | null {
+    guess: string,
+  ): { correct: boolean; final: boolean; level: number } | null {
     const match = room.match;
     if (!match || room.phase !== "playing") return null;
     if (index !== match.index) return null;
@@ -495,45 +537,48 @@ export class RoomStore {
     const mode = MODES[room.config.mode];
     const plan = match.rounds[match.index];
     if (!plan) return null;
-    if (!plan.choices.some((c) => c.id === choiceId)) return null;
+    // A Quiz guess names one of the options; a typed one is free text the mode
+    // grades itself.
+    if (!mode.typed && !plan.choices.some((c) => c.id === guess)) return null;
 
-    // In a shared mode the first final guess ends the Round for everybody, so
-    // one recorded answer means nobody may guess again.
-    const done = mode.shared ? match.answers.size > 0 : match.answers.has(playerId);
-    if (done) return null;
+    if (this.isDone(room, match, playerId)) return null;
 
-    const key = mode.shared ? TEAM_KEY : playerId;
-    const wrongSoFar = match.wrong.get(key) ?? [];
-    // Tapping an option already struck out is a mis-tap, not a fresh attempt.
-    if (wrongSoFar.includes(choiceId)) return null;
+    const key = this.ownerKey(room, playerId);
+    const tried = match.tried.get(key) ?? [];
+    // Sending a title that has already failed is a mis-tap or a teammate who
+    // did not look; either way it must not cost a rung.
+    if (tried.some((t) => t.toLowerCase() === guess.toLowerCase())) return null;
+
+    const level = match.levels.get(key) ?? 0;
 
     // Server clock, server arithmetic. The client's countdown is decoration.
     const elapsedMs = Date.now() - match.startAt;
-    const { correct, gained, final } = mode.judge({
-      plan,
-      choiceId,
-      elapsedMs,
-      wrongSoFar,
-    });
+    const judged = mode.judge({ plan, guess, elapsedMs, level });
 
-    if (!correct) match.wrong.set(key, [...wrongSoFar, choiceId]);
+    match.levels.set(key, judged.level);
+    if (!judged.correct) match.tried.set(key, [...tried, guess]);
 
-    if (final) {
-      const record = { choiceId, elapsedMs, correct, gained };
-      // A shared mode scores the Room, not the tapper: everyone connected ends
+    if (judged.final) {
+      const record = {
+        choiceId: guess,
+        elapsedMs,
+        correct: judged.correct,
+        gained: judged.gained,
+      };
+      // A shared mode scores the Room, not the guesser: everyone connected ends
       // the Round with the same result and the same points.
       const scored = mode.shared
         ? [...room.players.values()].filter((p) => p.connected)
         : [room.players.get(playerId)].filter((p) => p !== undefined);
       for (const player of scored) {
         match.answers.set(player.id, record);
-        player.score += gained;
+        player.score += judged.gained;
       }
     }
 
     this.maybeAdvance(room);
     if (room.phase === "playing") this.events.onState(room);
-    return { correct, final };
+    return { correct: judged.correct, final: judged.final, level: judged.level };
   }
 
   /** Ends the Round early once nobody the room is waiting on is left. */
@@ -667,10 +712,15 @@ export function toRoomState(room: Room): RoomState {
         clipMs: plan.clipMs,
         answerWindowMs: plan.answerWindowMs,
         stagesMs: plan.stagesMs,
-        // Only a shared mode's strikes are everyone's business; a competitive
-        // player's own strikes reach them alone, over their own socket.
-        strikes: MODES[room.config.mode].shared
-          ? (match.wrong.get(TEAM_KEY) ?? [])
+        levels: [...room.players.values()].map((p) => ({
+          playerId: p.id,
+          level:
+            match.levels.get(
+              MODES[room.config.mode].shared ? TEAM_KEY : p.id,
+            ) ?? 0,
+        })),
+        tried: MODES[room.config.mode].shared
+          ? (match.tried.get(TEAM_KEY) ?? [])
           : [],
         deadlineAt: match.deadlineAt,
         startAt: match.startAt,

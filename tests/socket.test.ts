@@ -159,8 +159,8 @@ describe("socket wiring", () => {
     expect(JSON.stringify(playing.round)).not.toContain("correct");
 
     const choice = playing.round.choices[0].id;
-    host.emit("round:answer", { index: playing.round.index, choiceId: choice });
-    guest.emit("round:answer", { index: playing.round.index, choiceId: choice });
+    host.emit("round:answer", { index: playing.round.index, guess: choice });
+    guest.emit("round:answer", { index: playing.round.index, guess: choice });
 
     const reveal = await nextState(guest, (s) => s.phase === "reveal");
     expect(reveal.reveal.track.title).toBeTruthy();
@@ -198,35 +198,22 @@ describe("socket wiring", () => {
 
   describe("heardle", () => {
     /**
-     * Which choice is the right one, read off the mocked pool.
+     * The right answer, read off the mocked pool.
      *
-     * The fixture names each preview after its track id, so a test can tell a
-     * wrong option from a right one without waiting for the reveal. Nothing
-     * real leaks this way: Apple's preview URLs are opaque hashes with neither
-     * the id nor the title in them.
+     * The fixture names each preview after its track, so a test can type the
+     * correct title without waiting for the reveal. Nothing real leaks this
+     * way: Apple's preview URLs are opaque hashes with no title in them.
      */
-    function wrongChoice(round: any): string {
-      const answerId = /\/([\w-]+)\.m4a$/.exec(round.previewUrl)![1];
-      const wrong = round.choices.find((c: any) => c.id !== answerId);
-      expect(wrong).toBeDefined();
-      return wrong.id;
+    function answerTitle(round: any): string {
+      const id = /\/([\w-]+)\.m4a$/.exec(round.previewUrl)![1];
+      return `Song ${id}`;
     }
 
-    /** Wait for one `round:strike`, or prove within `ms` that none arrived. */
-    function nextStrike(sock: Socket, ms = 1200) {
-      return new Promise<any | null>((resolve) => {
-        const timer = setTimeout(() => {
-          sock.off("round:strike", onStrike);
-          resolve(null);
-        }, ms);
-        const onStrike = (payload: any) => {
-          clearTimeout(timer);
-          sock.off("round:strike", onStrike);
-          resolve(payload);
-        };
-        sock.on("round:strike", onStrike);
-      });
-    }
+    const WRONG = "A Song That Is Not Playing";
+
+    /** Send a guess and wait for the server's private verdict. */
+    const guess = (sock: Socket, index: number, text: string) =>
+      new Promise<any>((r) => sock.emit("round:answer", { index, guess: text }, r));
 
     /** Two clients in one room, playing the given mode, on an open round. */
     async function playing(mode: "heardle" | "heardle-coop") {
@@ -251,54 +238,85 @@ describe("socket wiring", () => {
       return { host, guest, round: open.round };
     }
 
-    it("tells the guesser their option is gone, and tells nobody else", async () => {
-      const { host, guest, round } = await playing("heardle");
-      const wrong = wrongChoice(round);
-
-      const mine = nextStrike(host);
-      const theirs = nextStrike(guest);
-      host.emit("round:answer", { index: round.index, choiceId: wrong });
-
-      expect(await mine).toEqual({ index: round.index, choiceId: wrong });
-      // Broadcasting it would hand the guest a free elimination.
-      expect(await theirs).toBeNull();
+    it("puts no options on the wire at all", async () => {
+      const { round } = await playing("heardle");
+      expect(round.choices).toEqual([]);
+      // Not the title, not the id — there is nothing to recognise.
+      expect(JSON.stringify(round)).not.toContain(answerTitle(round));
+      expect(round.stagesMs.length).toBeGreaterThan(1);
     });
 
-    it("keeps the round open after a wrong guess, with the board untouched", async () => {
+    it("tells the guesser their answer was wrong, and tells nobody else", async () => {
       const { host, guest, round } = await playing("heardle");
-      const wrong = wrongChoice(round);
 
-      const strike = nextStrike(host);
-      host.emit("round:answer", { index: round.index, choiceId: wrong });
-      await strike;
+      const verdict = await guess(host, round.index, WRONG);
+      expect(verdict).toEqual({
+        ok: true,
+        data: { correct: false, final: false, level: 1 },
+      });
 
+      // The room snapshot reaches everyone, so it must not carry the verdict —
+      // only that the host has spent a level, which is not a hint about the song.
       const seen = await nextState(guest, (s) => s.phase === "playing");
-      expect(seen.round.strikes).toEqual([]);
       expect(seen.answeredPlayerIds).toEqual([]);
+      expect(JSON.stringify(seen)).not.toContain(WRONG);
     });
 
-    it("shows a co-op strike to the whole room", async () => {
-      const { host, guest, round } = await playing("heardle-coop");
-      const wrong = wrongChoice(round);
+    it("accepts the typed title and closes the round", async () => {
+      const { host, guest, round } = await playing("heardle");
+      const title = answerTitle(round);
 
-      host.emit("round:answer", { index: round.index, choiceId: wrong });
+      const mine = await guess(host, round.index, title);
+      expect(mine.data.correct).toBe(true);
+      expect(mine.data.final).toBe(true);
 
-      // Shared attempts are unplayable unless everyone can see what is gone.
+      // Listen before guessing: the server broadcasts the reveal from inside
+      // the same call it later acks, so the state can land first.
+      const revealed = nextState(guest, (s) => s.phase === "reveal");
+      await guess(guest, round.index, title);
+      const reveal = await revealed;
+      expect(reveal.reveal.track.title).toBe(title);
+    });
+
+    it("carries an unlock to the whole room's view of the ladder", async () => {
+      const { host, guest, round } = await playing("heardle");
+      const hostId = round.levels[0].playerId;
+
+      host.emit("round:unlock", { index: round.index });
       const seen = await nextState(
         guest,
-        (s) => s.phase === "playing" && s.round.strikes.length > 0,
+        (s) => s.round?.levels.some((l: any) => l.level > 0),
       );
-      expect(seen.round.strikes).toEqual([wrong]);
+
+      // Everyone can see how much music a rival has spent — that is not a hint
+      // about the song, and watching it is half the fun.
+      const levels = new Map(seen.round.levels.map((l: any) => [l.playerId, l.level]));
+      expect([...levels.values()].filter((v) => v === 1)).toHaveLength(1);
+      expect(levels.size).toBe(2);
+      expect(hostId).toBeTruthy();
     });
 
-    it("carries the stage ladder to the client", async () => {
-      const { round } = await playing("heardle");
-      expect(round.stagesMs.length).toBeGreaterThan(1);
-      const sorted = [...round.stagesMs].sort((a: number, b: number) => a - b);
-      expect(round.stagesMs).toEqual(sorted);
-      // The music runs to the last mark, then the silence keeps answers open.
-      expect(round.clipMs).toBe(round.stagesMs.at(-1));
-      expect(round.answerWindowMs).toBeGreaterThan(round.clipMs);
+    it("moves the whole room up one rung in co-op", async () => {
+      const { host, guest, round } = await playing("heardle-coop");
+
+      host.emit("round:unlock", { index: round.index });
+      const seen = await nextState(
+        guest,
+        (s) => s.round?.levels.every((l: any) => l.level === 1),
+      );
+      expect(seen.round.levels).toHaveLength(2);
+    });
+
+    it("scores everyone in co-op off one typed answer", async () => {
+      const { host, guest, round } = await playing("heardle-coop");
+
+      const revealed = nextState(guest, (s) => s.phase === "reveal");
+      await guess(host, round.index, answerTitle(round));
+      const reveal = await revealed;
+
+      const scores = reveal.players.map((p: any) => p.score);
+      expect(scores[0]).toBeGreaterThan(0);
+      expect(new Set(scores).size).toBe(1);
     });
   });
 

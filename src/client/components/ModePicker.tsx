@@ -59,7 +59,7 @@ export function ModePicker({
                 {t(`mode.${id}` as StringKey)}
               </span>
 
-              <ClipShape stages={id === "quiz" ? 0 : 6} />
+              <ClipShape stages={id === "quiz" ? 0 : 4} />
 
               <span
                 className={`label mt-3 leading-relaxed ${
@@ -82,8 +82,9 @@ export function ModePicker({
 }
 
 /**
- * What the clip does over the round: one block for Quiz, a staircase for
- * Heardle. Both draw in currentColor so the shape inverts with the card.
+ * What the clip does over the round: one fixed block for Quiz, a staircase you
+ * climb for Heardle. Both draw in currentColor so the shape inverts with the
+ * card.
  */
 function ClipShape({ stages }: { stages: number }) {
   if (stages === 0) {

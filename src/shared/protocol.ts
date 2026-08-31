@@ -76,10 +76,18 @@ export const readySchema = z.object({ index: z.number().int().min(0) });
 
 export const lockSchema = z.object({ locked: z.boolean() });
 
+/**
+ * `guess` is a choice id in Quiz and a typed song title in Heardle. One field
+ * rather than two: to the Room it is opaque either way — only the Game Mode
+ * knows how to read it.
+ */
 export const answerSchema = z.object({
   index: z.number().int().min(0),
-  choiceId: z.string().min(1).max(64),
+  guess: z.string().trim().min(1).max(160),
 });
+
+/** Spend one level to hear more of the Preview. */
+export const unlockSchema = z.object({ index: z.number().int().min(0) });
 
 export type Ack<T> =
   | { ok: true; data: T }
@@ -89,6 +97,14 @@ export type JoinResult = {
   code: string;
   playerId: string;
   sessionId: string;
+};
+
+export type AnswerResult = {
+  correct: boolean;
+  /** True once this player (or the Room) is done with the Round. */
+  final: boolean;
+  /** The unlock level after the guess. A wrong Heardle guess spends one. */
+  level: number;
 };
 
 export interface ClientToServerEvents {
@@ -115,7 +131,14 @@ export interface ClientToServerEvents {
   "rooms:unwatch": () => void;
   /** Client reports its audio is buffered for this Round. */
   "round:ready": (payload: unknown) => void;
-  "round:answer": (payload: unknown) => void;
+  /**
+   * Answers carry an ack, because Heardle has to tell the guesser privately
+   * whether they were right — the room snapshot goes to everyone by definition,
+   * and in the competitive mode a wrong guess is nobody else's business.
+   */
+  "round:answer": (payload: unknown, ack?: (res: Ack<AnswerResult>) => void) => void;
+  /** Heardle: spend a level to hear more of the clip. */
+  "round:unlock": (payload: unknown) => void;
   /**
    * Clock sync. The client measures round-trip time and derives how far its
    * Date.now() sits from the server's, so a countdown to a server deadline is
@@ -135,14 +158,4 @@ export interface ServerToClientEvents {
   "room:error": (error: { code: string; message: string }) => void;
   /** The public room list, pushed whenever it changes. */
   "rooms:listing": (rooms: RoomListing[]) => void;
-  /**
-   * A Heardle guess that was wrong, sent only to whoever made it.
-   *
-   * This cannot ride along in the room snapshot: in the competitive mode a
-   * strike is private, and telling the room which option is out would hand
-   * everybody else an elimination they did not pay for. The shared mode does
-   * broadcast its strikes, in `RoundView.strikes`, because there they belong to
-   * the whole Room.
-   */
-  "round:strike": (payload: { index: number; choiceId: string }) => void;
 }

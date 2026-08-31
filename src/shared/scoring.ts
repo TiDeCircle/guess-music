@@ -45,60 +45,22 @@ export function scoreAnswer({
 }
 
 /**
- * What one wrong guess costs in Heardle, before the multiplier.
+ * What one Heardle unlock level is worth, already multiplied.
  *
- * Big enough that guessing to eliminate is a real trade rather than free
- * information, small enough that it is still worth guessing again.
- */
-export const HEARDLE_WRONG_PENALTY = 40;
-
-/** The floor a correct Heardle answer cannot be penalised below. */
-export const HEARDLE_MIN_CORRECT = 30;
-
-/**
- * What a Heardle tier is worth before any penalty, already multiplied.
- *
- * The first tier pays exactly what an instant Quiz answer pays and the last
+ * Level 0 pays exactly what an instant Quiz answer pays, and the last level
  * pays exactly what a Quiz answer on the buzzer pays, so a Match is worth the
- * same whichever mode a Room picks.
+ * same whichever mode a Room picks — the choice stays about how you want to
+ * play rather than which mode farms more points.
+ *
+ * There is no separate penalty for guessing wrong: a wrong guess spends a
+ * level, and the level is the price.
  */
 export function heardleTierPoints(
-  stageIndex: number,
-  stageCount: number,
+  level: number,
+  levelCount: number,
   multiplier: number,
 ): number {
-  const spread = Math.max(stageCount - 1, 1);
-  const tier = Math.min(Math.max(stageIndex, 0), spread);
+  const spread = Math.max(levelCount - 1, 1);
+  const tier = Math.min(Math.max(level, 0), spread);
   return Math.round((BASE_POINTS + MAX_TIME_BONUS * (1 - tier / spread)) * multiplier);
-}
-
-export type HeardleScoreInput = {
-  correct: boolean;
-  /** Which tier the clip had reached when the answer landed. */
-  stageIndex: number;
-  stageCount: number;
-  /** How many wrong guesses were already spent on this Round. */
-  wrongAttempts: number;
-  multiplier: number;
-};
-
-/**
- * Heardle scores by tier rather than by the clock: everyone answering inside
- * the same stretch of music gets the same points, which is what makes "I got it
- * in two seconds" mean something you can say out loud.
- */
-export function scoreHeardle({
-  correct,
-  stageIndex,
-  stageCount,
-  wrongAttempts,
-  multiplier,
-}: HeardleScoreInput): number {
-  if (!correct) return 0;
-  const earned = heardleTierPoints(stageIndex, stageCount, multiplier);
-  const penalty = HEARDLE_WRONG_PENALTY * Math.max(wrongAttempts, 0) * multiplier;
-  // Floored rather than zeroed: someone who eliminated their way to the right
-  // answer did still get it, and a round that can pay nothing is a round nobody
-  // finishes.
-  return Math.round(Math.max(earned - penalty, HEARDLE_MIN_CORRECT * multiplier));
 }

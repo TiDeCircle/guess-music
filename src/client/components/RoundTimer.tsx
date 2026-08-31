@@ -23,8 +23,7 @@ export function RoundTimer({
   deadlineAt,
   clipMs,
   windowMs,
-  stagesMs,
-  tierPoints,
+  audibleMs,
   serverNow,
   idle,
 }: {
@@ -33,10 +32,11 @@ export function RoundTimer({
   clipMs: number;
   /** The Round's full Answer Window. Known before the clock starts. */
   windowMs: number;
-  /** Heardle: where the score tier drops. Empty in Quiz. */
-  stagesMs?: number[];
-  /** What each tier pays, already multiplied. Same length as stagesMs. */
-  tierPoints?: number[];
+  /**
+   * How much of the clip is actually audible right now. Differs from `clipMs`
+   * in Heardle, where it is whatever this player has unlocked so far.
+   */
+  audibleMs?: number;
   serverNow: () => number;
   /** True while waiting for everyone's audio: show the shape, not a count. */
   idle?: boolean;
@@ -59,15 +59,18 @@ export function RoundTimer({
     return () => cancelAnimationFrame(frame);
   }, [idle, startAt, deadlineAt, windowMs, serverNow]);
 
-  const staged = (stagesMs?.length ?? 0) > 0;
-  const playingMusic = !idle && elapsedMs < clipMs;
+  // Heardle hands over an audible length; Quiz has none, and gets the
+  // block-per-second bar it was designed around.
+  const continuous = audibleMs !== undefined;
+  const audible = audibleMs ?? clipMs;
+  const playingMusic = !idle && elapsedMs < audible;
 
   return (
     <div>
-      {staged ? (
-        <StageBar
-          stagesMs={stagesMs!}
+      {continuous ? (
+        <WindowBar
           windowMs={windowMs}
+          audibleMs={audible}
           elapsedMs={elapsedMs}
           idle={idle}
           label={t("timeLeft")}
@@ -75,7 +78,7 @@ export function RoundTimer({
       ) : (
         <SecondBar
           windowMs={windowMs}
-          clipMs={clipMs}
+          clipMs={audible}
           elapsedMs={elapsedMs}
           idle={idle}
           label={t("timeLeft")}
@@ -90,40 +93,21 @@ export function RoundTimer({
               ? t("musicPlaying")
               : t("silence")}
         </span>
-        {staged && tierPoints ? (
-          <span className="flex items-baseline gap-2">
-            <span className="label text-grey-500">{t("pointsNow")}</span>
-            <span
-              className="numeric font-semibold"
-              style={{ fontSize: "var(--text-title)" }}
-              aria-live="off"
-            >
-              {tierPoints[stageIndex(stagesMs!, idle ? 0 : elapsedMs)]}
-            </span>
-          </span>
-        ) : (
-          <span
-            className="numeric font-semibold"
-            style={{ fontSize: "var(--text-title)" }}
-            aria-live="off"
-          >
-            {/* Ceil so the count reaches zero exactly when answers stop being
-                accepted, rather than showing 0 for a whole second while they
-                still are. */}
-            {idle
-              ? Math.max(Math.round(windowMs / 1000), 1)
-              : Math.ceil((windowMs - elapsedMs) / 1000)}
-          </span>
-        )}
+        <span
+          className="numeric font-semibold"
+          style={{ fontSize: "var(--text-title)" }}
+          aria-live="off"
+        >
+          {/* Ceil so the count reaches zero exactly when answers stop being
+              accepted, rather than showing 0 for a whole second while they
+              still are. */}
+          {idle
+            ? Math.max(Math.round(windowMs / 1000), 1)
+            : Math.ceil((windowMs - elapsedMs) / 1000)}
+        </span>
       </div>
     </div>
   );
-}
-
-/** Which tier the clip has reached. Mirrors `stageAt` on the server. */
-function stageIndex(stagesMs: readonly number[], elapsedMs: number): number {
-  const i = stagesMs.findIndex((end) => elapsedMs < end);
-  return i === -1 ? Math.max(stagesMs.length - 1, 0) : i;
 }
 
 /** Quiz: one block per second, tall while the music plays. */
@@ -168,57 +152,39 @@ function SecondBar({
 }
 
 /**
- * Heardle: one block per score tier, each as wide as the stretch of music it
- * covers.
+ * Heardle: one continuous bar rather than forty little blocks.
  *
- * The widths are the point. The top tier is a sliver and the bottom one is half
- * the bar, which is exactly how the round feels — the expensive decision is the
- * one you make in the first second.
+ * The window here is long enough to type a Thai title in, and a block per
+ * second at that length reads as noise. The filled stretch is how much music
+ * this player has unlocked; the rest is the time left to use it.
  */
-function StageBar({
-  stagesMs,
+function WindowBar({
   windowMs,
+  audibleMs,
   elapsedMs,
   idle,
   label,
 }: {
-  stagesMs: number[];
   windowMs: number;
+  audibleMs: number;
   elapsedMs: number;
   idle?: boolean;
   label: string;
 }) {
-  const clipMs = stagesMs[stagesMs.length - 1] ?? windowMs;
-  const current = idle ? -1 : stageIndex(stagesMs, elapsedMs);
-  // The Silence after the last stage still accepts answers, so it belongs on
-  // the bar — low, like every other stretch with no music in it.
-  const silenceMs = Math.max(windowMs - clipMs, 0);
-  const inSilence = !idle && elapsedMs >= clipMs;
+  const played = idle ? 0 : Math.min(elapsedMs / windowMs, 1) * 100;
+  const music = Math.min(audibleMs / windowMs, 1) * 100;
 
   return (
-    <div className="flex h-12 items-end gap-px" role="timer" aria-label={label}>
-      {stagesMs.map((end, i) => {
-        const start = i === 0 ? 0 : (stagesMs[i - 1] ?? 0);
-        return (
-          <span
-            key={end}
-            className={`h-full transition-colors ${
-              !inSilence && i === current
-                ? "bg-accent"
-                : i < current || inSilence
-                  ? "bg-grey-300"
-                  : "bg-ink"
-            }`}
-            style={{ flexGrow: Math.max(end - start, 1) }}
-          />
-        );
-      })}
-      {silenceMs > 0 && (
-        <span
-          className={`h-1/3 transition-colors ${inSilence ? "bg-accent" : "bg-grey-500"}`}
-          style={{ flexGrow: silenceMs }}
-        />
-      )}
+    <div className="relative h-3 w-full bg-grey-100" role="timer" aria-label={label}>
+      {/* Where the music reaches, so the quiet stretch reads as part of the
+          round rather than a preview that died. */}
+      <span className="absolute inset-y-0 left-0 bg-grey-300" style={{ width: `${music}%` }} />
+      <span className="absolute inset-y-0 left-0 bg-ink" style={{ width: `${played}%` }} />
+      <span
+        className="absolute inset-y-0 w-px bg-accent"
+        style={{ left: `${music}%` }}
+        aria-hidden
+      />
     </div>
   );
 }

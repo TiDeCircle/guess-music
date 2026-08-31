@@ -7,6 +7,7 @@ import {
   createRoomSchema,
   joinRoomSchema,
   readySchema,
+  unlockSchema,
   type ClientToServerEvents,
   type ServerToClientEvents,
 } from "@/shared/protocol";
@@ -167,25 +168,35 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       store.markReady(ctx.room, ctx.playerId, parsed.data.index);
     });
 
-    socket.on("round:answer", (payload) => {
+    socket.on("round:answer", (payload, ack) => {
+      const reply = (res: Parameters<NonNullable<typeof ack>>[0]) => {
+        if (typeof ack === "function") ack(res);
+      };
       const ctx = contextFor(socket);
-      if (!ctx) return;
+      if (!ctx) return reply({ ok: false, error: "ไม่ได้อยู่ในห้อง" });
       const parsed = answerSchema.safeParse(payload);
-      if (!parsed.success) return;
+      if (!parsed.success) return reply({ ok: false, error: "คำตอบไม่ถูกต้อง" });
+
       const outcome = store.submitAnswer(
         ctx.room,
         ctx.playerId,
         parsed.data.index,
-        parsed.data.choiceId,
+        parsed.data.guess,
       );
       // Heardle keeps the round open after a wrong guess, so the guesser has to
-      // learn immediately which option is gone — the reveal is far too late.
-      if (outcome && !outcome.correct) {
-        socket.emit("round:strike", {
-          index: parsed.data.index,
-          choiceId: parsed.data.choiceId,
-        });
-      }
+      // learn straight away — and only the guesser, since in the competitive
+      // mode a wrong answer is nobody else's business. The room snapshot goes
+      // to everyone by definition, which is why this rides the ack instead.
+      if (!outcome) return reply({ ok: false, error: "ตอบไม่ได้ตอนนี้" });
+      reply({ ok: true, data: outcome });
+    });
+
+    socket.on("round:unlock", (payload) => {
+      const ctx = contextFor(socket);
+      if (!ctx) return;
+      const parsed = unlockSchema.safeParse(payload);
+      if (!parsed.success) return;
+      store.unlock(ctx.room, ctx.playerId, parsed.data.index);
     });
 
     socket.on("disconnect", () => {

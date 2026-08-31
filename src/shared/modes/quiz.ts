@@ -13,6 +13,7 @@ export { CHOICE_COUNT };
 export const quizMode: GameMode = {
   id: "quiz",
   shared: false,
+  typed: false,
 
   buildRounds(input: BuildRoundsInput): RoundPlan[] {
     return buildChoiceRounds(input, (d) => ({
@@ -22,8 +23,8 @@ export const quizMode: GameMode = {
     }));
   },
 
-  judge({ plan, choiceId, elapsedMs }: JudgeInput): Judgement {
-    const correct = choiceId === plan.answer.id;
+  judge({ plan, guess, elapsedMs }: JudgeInput): Judgement {
+    const correct = guess === plan.answer.id;
     return {
       correct,
       gained: scoreAnswer({
@@ -35,6 +36,8 @@ export const quizMode: GameMode = {
       // Right or wrong, a Quiz answer is final. That is what makes the speed
       // bonus mean anything.
       final: true,
+      // Quiz has no ladder to climb; the clip is what it is.
+      level: 0,
     };
   },
 };

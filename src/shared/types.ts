@@ -43,10 +43,11 @@ export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
 /**
  * The Game Modes a Room can play.
  *
- * `quiz` is one clip and one final answer. Both Heardle modes replace that with
- * a clip that keeps growing and guesses that can be spent wrong — the split
- * between them is social, not mechanical: `heardle` gives every player their own
- * attempts and score, `heardle-coop` gives the whole Room one of each.
+ * `quiz` is one clip and one answer chosen off the screen. Both Heardle modes
+ * replace that with a clip you unlock a step at a time and an answer you type.
+ * The split between them is social, not mechanical: `heardle` gives every
+ * player their own ladder and score, `heardle-coop` gives the whole Room one of
+ * each.
  */
 export type GameModeId = "quiz" | "heardle" | "heardle-coop";
 
@@ -96,6 +97,11 @@ export type MatchConfig = {
 export type RoundView = {
   index: number;
   total: number;
+  /**
+   * The options on screen. Empty in a typed mode — which is the strongest
+   * version of the promise the Quiz rounds only approximate: with no options
+   * sent, the answer is not on the wire at all before the reveal.
+   */
   choices: Choice[];
   /** How long the Preview stays audible. */
   clipMs: number;
@@ -114,16 +120,28 @@ export type RoundView = {
   startAt: number;
   previewUrl: string;
   /**
-   * Heardle: the ms marks where the score tier drops, last one being where the
-   * music stops. Empty in Quiz, which has a single tier and a linear bonus.
+   * Heardle: how much of the Preview each unlock level hands over. Empty in
+   * Quiz, whose clip is fixed for the whole Round.
    */
   stagesMs: number[];
   /**
-   * Options struck out for the whole Room by a wrong guess. Only a shared mode
-   * fills this — in a competitive one a strike is private to whoever spent it,
-   * and broadcasting it would hand everyone else a free elimination.
+   * How far each player has unlocked the clip. In a shared mode every entry
+   * carries the Room's one level.
+   *
+   * Public on purpose: how much music someone has spent is not a hint about
+   * what the song is, and watching a rival still sitting on one second is the
+   * best part of playing this against people.
    */
-  strikes: string[];
+  levels: Array<{ playerId: string; level: number }>;
+  /**
+   * Titles the Room has already tried and had rejected. Filled only in a shared
+   * mode, where the ladder is everyone's: without it a teammate would spend a
+   * rung repeating a guess that has already failed.
+   *
+   * In a competitive mode this stays empty — your own wrong guesses are yours,
+   * and the client remembers them without telling anybody.
+   */
+  tried: string[];
 };
 
 /** What everyone sees once the Round closes. */

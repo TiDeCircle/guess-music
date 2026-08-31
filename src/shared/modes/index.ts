@@ -6,12 +6,13 @@ import type { Rng } from "../rng";
 export type RoundPlan = {
   index: number;
   answer: Track;
+  /** The options on screen. Empty in a typed mode, which shows none. */
   choices: Choice[];
   clipMs: number;
   answerWindowMs: number;
   /**
-   * Where the score tier drops, in ms from the Round opening. Empty in Quiz,
-   * whose single tier decays continuously instead.
+   * Heardle: how much of the Preview each unlock level hands over. Empty in
+   * Quiz, whose clip is fixed for the whole Round.
    */
   stagesMs: number[];
   multiplier: number;
@@ -29,14 +30,12 @@ export type BuildRoundsInput = {
 
 export type JudgeInput = {
   plan: RoundPlan;
-  choiceId: string;
+  /** A choice id in Quiz; whatever the player typed in Heardle. */
+  guess: string;
   /** ms from Round open to the server receiving this. Server clock only. */
   elapsedMs: number;
-  /**
-   * Wrong choiceIds already spent on this Round — by this player, or by the
-   * whole Room when the mode is shared.
-   */
-  wrongSoFar: readonly string[];
+  /** How far the clip has been unlocked for whoever is guessing. */
+  level: number;
 };
 
 export type Judgement = {
@@ -44,9 +43,14 @@ export type Judgement = {
   gained: number;
   /**
    * Whether this ends the Round for whoever guessed. False is what lets Heardle
-   * hand back a wrong answer and keep the music running.
+   * hand a wrong guess back and keep the round alive.
    */
   final: boolean;
+  /**
+   * The unlock level after this guess. A wrong Heardle guess spends one, which
+   * is both the penalty and the consolation: more music, fewer points.
+   */
+  level: number;
 };
 
 /**
@@ -54,22 +58,28 @@ export type Judgement = {
  * they get, and what counts as correct.
  *
  * The interface exists so the Room machinery never branches on which mode is
- * running — it asks `judge` what an answer was worth and `shared` who it
- * belongs to, and it would keep working for a fourth mode nobody has written.
+ * running — it asks `judge` what a guess was worth and `shared` who it belongs
+ * to, and it would keep working for a fourth mode nobody has written.
  */
 export type GameMode = {
   id: GameModeId;
   /**
-   * True when the Room answers as one: a single set of attempts, and points
-   * that land on everybody rather than on whoever tapped.
+   * True when the Room answers as one: a single ladder of unlocks, and points
+   * that land on everybody rather than on whoever guessed.
    */
   shared: boolean;
+  /**
+   * True when the answer is typed rather than picked off the screen. A typed
+   * Round sends no options at all, so the answer is never on the wire before
+   * the reveal.
+   */
+  typed: boolean;
   buildRounds(input: BuildRoundsInput): RoundPlan[];
   judge(input: JudgeInput): Judgement;
 };
 
 export { quizMode, CHOICE_COUNT } from "./quiz";
-export { heardleMode, heardleCoopMode, HEARDLE_MAX_WRONG, stageAt } from "./heardle";
+export { heardleMode, heardleCoopMode, unlockedMs } from "./heardle";
 
 import { quizMode } from "./quiz";
 import { heardleCoopMode, heardleMode } from "./heardle";

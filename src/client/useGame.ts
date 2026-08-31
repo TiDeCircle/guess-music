@@ -5,10 +5,12 @@ import { io, type Socket } from "socket.io-client";
 import type { MatchConfig, RoomListing, RoomState } from "@/shared/types";
 import type {
   Ack,
+  AnswerResult,
   ClientToServerEvents,
   JoinResult,
   ServerToClientEvents,
 } from "@/shared/protocol";
+import { unlockedMs } from "@/shared/modes";
 import { AudioEngine } from "./audio";
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -90,8 +92,8 @@ export function useGame() {
   const playerIdRef = useRef<string | null>(null);
   /** Round index we have already reported ready for. */
   const readyForRef = useRef(-1);
-  /** Round index we have already started playing. */
-  const playedRef = useRef(-1);
+  /** Round and unlock level we have already played, as "index:level". */
+  const playedRef = useRef("");
 
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [room, setRoom] = useState<RoomState | null>(null);
@@ -104,15 +106,13 @@ export function useGame() {
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [roomList, setRoomList] = useState<RoomListing[]>([]);
   /**
-   * This player's own wrong Heardle guesses, and the Round they belong to.
-   *
-   * Kept with the index rather than cleared by an effect: strikes arrive on
-   * their own event, so a strike for the round that just ended must not be able
-   * to land on the next one's options.
+   * The wrong titles this player has already tried, and the Round they belong
+   * to. Kept with the index so a guess from the round that just ended cannot
+   * appear under the next one.
    */
-  const [strikeLog, setStrikeLog] = useState<{ index: number; ids: string[] }>({
+  const [guessLog, setGuessLog] = useState<{ index: number; wrong: string[] }>({
     index: -1,
-    ids: [],
+    wrong: [],
   });
 
   if (!audioRef.current && typeof window !== "undefined") {
@@ -180,16 +180,6 @@ export function useGame() {
     socket.on("disconnect", () => setStatus("offline"));
     socket.on("room:state", (next) => setRoom(next));
     socket.on("rooms:listing", (rooms) => setRoomList(rooms));
-    socket.on("round:strike", ({ index, choiceId }) => {
-      setStrikeLog((prev) =>
-        prev.index === index
-          ? {
-              index,
-              ids: prev.ids.includes(choiceId) ? prev.ids : [...prev.ids, choiceId],
-            }
-          : { index, ids: [choiceId] },
-      );
-    });
     socket.on("room:error", (e) => setError(e.message));
     socket.on("room:closed", () => {
       writeSession(null);
@@ -229,6 +219,21 @@ export function useGame() {
 
   const phase = room?.phase;
   const round = room?.round ?? null;
+
+  /**
+   * How far the clip is unlocked for us, and therefore how much of it plays.
+   * Zero-length stages mean Quiz, where the clip never changes.
+   */
+  const myLevel = useMemo(() => {
+    if (!round || !playerId) return 0;
+    return round.levels.find((l) => l.playerId === playerId)?.level ?? 0;
+  }, [round, playerId]);
+
+  const audibleMs = round
+    ? round.stagesMs.length > 0
+      ? unlockedMs(round.stagesMs, myLevel)
+      : round.clipMs
+    : 0;
   const revealNext = room?.reveal?.nextPreviewUrl ?? null;
   const reveal = room?.reveal ?? null;
 
@@ -267,11 +272,14 @@ export function useGame() {
       };
     }
 
-    if (phase === "playing" && playedRef.current !== round.index) {
-      playedRef.current = round.index;
-      audio.play(round.previewUrl, round.clipMs);
+    // Heardle replays from the beginning every time a level is spent — hearing
+    // the song grow from the top is the mode, not a longer tail.
+    const key = `${round.index}:${myLevel}`;
+    if (phase === "playing" && playedRef.current !== key) {
+      playedRef.current = key;
+      audio.play(round.previewUrl, audibleMs);
     }
-  }, [phase, round]);
+  }, [phase, round, myLevel, audibleMs]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -341,9 +349,9 @@ export function useGame() {
     setError(null);
     setHistory([]);
     setPreviewingId(null);
-    setStrikeLog({ index: -1, ids: [] });
+    setGuessLog({ index: -1, wrong: [] });
     readyForRef.current = -1;
-    playedRef.current = -1;
+    playedRef.current = "";
     socketRef.current?.emit("match:start");
   }, []);
 
@@ -375,9 +383,48 @@ export function useGame() {
     socketRef.current?.emit("match:lobby");
   }, []);
 
-  const answer = useCallback((index: number, choiceId: string) => {
-    socketRef.current?.emit("round:answer", { index, choiceId });
+  /**
+   * Send a guess: a choice id in Quiz, a typed title in Heardle.
+   *
+   * The verdict comes back on the ack rather than in the room snapshot,
+   * because a wrong Heardle guess is private to whoever made it.
+   */
+  const answer = useCallback(
+    (index: number, guess: string) =>
+      new Promise<AnswerResult | null>((resolve) => {
+        const socket = socketRef.current;
+        if (!socket) return resolve(null);
+        socket.emit("round:answer", { index, guess }, (res: Ack<AnswerResult>) => {
+          if (!res.ok) return resolve(null);
+          if (!res.data.correct) {
+            setGuessLog((prev) =>
+              prev.index === index
+                ? { index, wrong: prev.wrong.includes(guess) ? prev.wrong : [...prev.wrong, guess] }
+                : { index, wrong: [guess] },
+            );
+          }
+          resolve(res.data);
+        });
+      }),
+    [],
+  );
+
+  /** Heardle: spend a level to hear more. */
+  const unlock = useCallback((index: number) => {
+    socketRef.current?.emit("round:unlock", { index });
   }, []);
+
+  /**
+   * Play the unlocked stretch again, free.
+   *
+   * A player who missed one second of a song they know would otherwise have to
+   * buy the next level to get another listen, which charges them for a lapse in
+   * attention rather than in knowledge.
+   */
+  const replayClip = useCallback(() => {
+    if (!round || audibleMs <= 0) return;
+    audioRef.current?.play(round.previewUrl, audibleMs);
+  }, [round, audibleMs]);
 
   const leave = useCallback(() => {
     writeSession(null);
@@ -396,10 +443,10 @@ export function useGame() {
     [room, playerId],
   );
 
-  /** Struck options for the Round on screen, and only that Round. */
-  const strikes = useMemo(
-    () => (room?.round && strikeLog.index === room.round.index ? strikeLog.ids : []),
-    [room?.round, strikeLog],
+  /** Wrong titles already tried on the Round on screen, and only that Round. */
+  const wrongGuesses = useMemo(
+    () => (round && guessLog.index === round.index ? guessLog.wrong : []),
+    [round, guessLog],
   );
 
   return {
@@ -414,7 +461,11 @@ export function useGame() {
     volumeStep,
     setVolumeStep,
     history,
-    strikes,
+    wrongGuesses,
+    myLevel,
+    audibleMs,
+    unlock,
+    replayClip,
     previewingId,
     togglePreview,
     createRoom,

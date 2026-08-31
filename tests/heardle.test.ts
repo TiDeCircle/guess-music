@@ -2,21 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Track } from "@/shared/types";
 import { DIFFICULTIES } from "@/shared/difficulty";
 import { makeRng } from "@/shared/rng";
-import {
-  HEARDLE_MAX_WRONG,
-  heardleCoopMode,
-  heardleMode,
-  quizMode,
-  stageAt,
-} from "@/shared/modes";
-import {
-  BASE_POINTS,
-  HEARDLE_MIN_CORRECT,
-  HEARDLE_WRONG_PENALTY,
-  MAX_TIME_BONUS,
-  heardleTierPoints,
-  scoreHeardle,
-} from "@/shared/scoring";
+import { heardleCoopMode, heardleMode, quizMode, unlockedMs } from "@/shared/modes";
+import { BASE_POINTS, MAX_TIME_BONUS, heardleTierPoints } from "@/shared/scoring";
 
 function pool(artists = 12, songs = 6): Track[] {
   const out: Track[] = [];
@@ -36,39 +23,41 @@ function pool(artists = 12, songs = 6): Track[] {
   return out;
 }
 
-const rounds = (mode = heardleMode, difficulty = DIFFICULTIES.medium) =>
-  mode.buildRounds({ pool: pool(), count: 5, difficulty, rng: makeRng(7) });
+const build = (difficulty = DIFFICULTIES.medium, count = 5) =>
+  heardleMode.buildRounds({ pool: pool(), count, difficulty, rng: makeRng(7) });
 
-describe("heardle stages", () => {
-  const stages = DIFFICULTIES.medium.heardleStages;
-
-  it("puts the opening moment in the top tier", () => {
-    expect(stageAt(stages, 0)).toBe(0);
-    expect(stageAt(stages, 999)).toBe(0);
+describe("heardle rounds", () => {
+  it("sends no options at all", () => {
+    // The strongest version of "the answer is never on the wire": there is
+    // nothing on screen to recognise it from.
+    for (const plan of build()) expect(plan.choices).toEqual([]);
   });
 
-  it("drops a tier exactly on each mark", () => {
-    // The mark is the end of its tier, so landing on it is already the next one.
-    expect(stageAt(stages, 1_000)).toBe(1);
-    expect(stageAt(stages, 1_999)).toBe(1);
-    expect(stageAt(stages, 2_000)).toBe(2);
-  });
-
-  it("keeps the last tier open through the silence after the music", () => {
-    const last = stages.length - 1;
-    expect(stageAt(stages, stages[last]! + 4_000)).toBe(last);
-  });
-
-  it("runs the music to the last mark and then allows five more seconds", () => {
-    const last = DIFFICULTIES.medium.heardleStages.at(-1)!;
-    for (const plan of rounds()) {
-      expect(plan.stagesMs).toEqual(DIFFICULTIES.medium.heardleStages);
-      expect(plan.clipMs).toBe(last);
-      expect(plan.answerWindowMs).toBe(last + 5_000);
+  it("carries the unlock ladder, and runs the clip to its last step", () => {
+    const ladder = DIFFICULTIES.medium.heardleStages;
+    for (const plan of build()) {
+      expect(plan.stagesMs).toEqual(ladder);
+      expect(plan.clipMs).toBe(ladder.at(-1));
+      // Long enough to type a Thai title in after the music has run out.
+      expect(plan.answerWindowMs).toBeGreaterThan(plan.clipMs + 20_000);
     }
   });
 
-  it("leaves quiz without stages, so it keeps its continuous bonus", () => {
+  it("plays a pool too thin for quiz", () => {
+    // Quiz cannot open a round it can't put four distinct options on, so three
+    // songs give it nothing. Heardle has no options to fill and plays all three.
+    const thin = pool(1, 3);
+    const opts = { pool: thin, count: 3, difficulty: DIFFICULTIES.medium, rng: makeRng(3) };
+    expect(heardleMode.buildRounds({ ...opts, rng: makeRng(3) })).toHaveLength(3);
+    expect(quizMode.buildRounds({ ...opts, rng: makeRng(3) })).toHaveLength(0);
+  });
+
+  it("never repeats an answer inside a match", () => {
+    const ids = build(DIFFICULTIES.medium, 8).map((r) => r.answer.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("leaves quiz without a ladder, so its clip stays fixed", () => {
     const quiz = quizMode.buildRounds({
       pool: pool(),
       count: 3,
@@ -78,10 +67,29 @@ describe("heardle stages", () => {
     for (const plan of quiz) expect(plan.stagesMs).toEqual([]);
   });
 
-  it("tightens the top tier as the difficulty rises", () => {
-    const easy = DIFFICULTIES.easy.heardleStages[0]!;
-    const extreme = DIFFICULTIES.extreme.heardleStages[0]!;
-    expect(extreme).toBeLessThan(easy);
+  it("gives less music at every step as the difficulty rises", () => {
+    const easy = DIFFICULTIES.easy.heardleStages;
+    const extreme = DIFFICULTIES.extreme.heardleStages;
+    expect(easy).toHaveLength(extreme.length);
+    for (const [i, ms] of extreme.entries()) expect(ms).toBeLessThan(easy[i]!);
+  });
+});
+
+describe("unlock levels", () => {
+  const ladder = DIFFICULTIES.medium.heardleStages;
+
+  it("hands over the first step before anything is spent", () => {
+    expect(unlockedMs(ladder, 0)).toBe(ladder[0]);
+  });
+
+  it("grows with each level and stops at the top", () => {
+    expect(unlockedMs(ladder, 1)).toBe(ladder[1]);
+    expect(unlockedMs(ladder, 99)).toBe(ladder.at(-1));
+    expect(unlockedMs(ladder, -3)).toBe(ladder[0]);
+  });
+
+  it("has nothing to hand over in quiz", () => {
+    expect(unlockedMs([], 0)).toBe(0);
   });
 });
 
@@ -89,125 +97,75 @@ describe("heardle scoring", () => {
   it("pays the same at both ends as a quiz round does", () => {
     // A match must be worth the same whichever mode a room picks, or the choice
     // stops being about how you want to play.
-    expect(heardleTierPoints(0, 6, 1)).toBe(BASE_POINTS + MAX_TIME_BONUS);
-    expect(heardleTierPoints(5, 6, 1)).toBe(BASE_POINTS);
+    expect(heardleTierPoints(0, 4, 1)).toBe(BASE_POINTS + MAX_TIME_BONUS);
+    expect(heardleTierPoints(3, 4, 1)).toBe(BASE_POINTS);
   });
 
-  it("pays everyone in the same stretch of music the same", () => {
-    const stages = DIFFICULTIES.medium.heardleStages;
-    const a = stageAt(stages, 4_100);
-    const b = stageAt(stages, 6_900);
-    expect(a).toBe(b);
+  it("drops with every level spent", () => {
+    const paid = [0, 1, 2, 3].map((l) => heardleTierPoints(l, 4, 1));
+    for (let i = 1; i < paid.length; i++) expect(paid[i]!).toBeLessThan(paid[i - 1]!);
   });
 
-  it("charges for each wrong guess", () => {
-    const clean = scoreHeardle({
-      correct: true,
-      stageIndex: 0,
-      stageCount: 6,
-      wrongAttempts: 0,
-      multiplier: 1,
-    });
-    const once = scoreHeardle({
-      correct: true,
-      stageIndex: 0,
-      stageCount: 6,
-      wrongAttempts: 1,
-      multiplier: 1,
-    });
-    expect(clean - once).toBe(HEARDLE_WRONG_PENALTY);
-  });
-
-  it("never lets a correct answer fall to nothing", () => {
-    const scraped = scoreHeardle({
-      correct: true,
-      stageIndex: 5,
-      stageCount: 6,
-      wrongAttempts: 99,
-      multiplier: 1,
-    });
-    expect(scraped).toBe(HEARDLE_MIN_CORRECT);
-  });
-
-  it("pays a wrong answer nothing, however early", () => {
-    expect(
-      scoreHeardle({
-        correct: false,
-        stageIndex: 0,
-        stageCount: 6,
-        wrongAttempts: 0,
-        multiplier: 2,
-      }),
-    ).toBe(0);
-  });
-
-  it("applies the difficulty multiplier to the floor as well", () => {
-    const scraped = scoreHeardle({
-      correct: true,
-      stageIndex: 5,
-      stageCount: 6,
-      wrongAttempts: 99,
-      multiplier: 2,
-    });
-    expect(scraped).toBe(HEARDLE_MIN_CORRECT * 2);
+  it("clamps a level outside the ladder", () => {
+    expect(heardleTierPoints(-1, 4, 1)).toBe(heardleTierPoints(0, 4, 1));
+    expect(heardleTierPoints(9, 4, 1)).toBe(heardleTierPoints(3, 4, 1));
   });
 });
 
 describe("heardle judging", () => {
-  const plan = rounds()[0]!;
-  const wrongIds = plan.choices.filter((c) => c.id !== plan.answer.id).map((c) => c.id);
+  const plan = build()[0]!;
+  const wrong = "A Completely Different Song";
 
-  it("keeps the round open after the first wrong guess", () => {
-    const out = heardleMode.judge({
-      plan,
-      choiceId: wrongIds[0]!,
-      elapsedMs: 500,
-      wrongSoFar: [],
-    });
-    expect(out).toEqual({ correct: false, gained: 0, final: false });
+  it("pays the level the guesser is standing on", () => {
+    const top = heardleMode.judge({ plan, guess: plan.answer.title, elapsedMs: 500, level: 0 });
+    const late = heardleMode.judge({ plan, guess: plan.answer.title, elapsedMs: 500, level: 3 });
+    expect(top.correct).toBe(true);
+    expect(top.final).toBe(true);
+    expect(top.gained).toBeGreaterThan(late.gained);
   });
 
-  it("closes it on the last one allowed", () => {
-    const out = heardleMode.judge({
-      plan,
-      choiceId: wrongIds[1]!,
-      elapsedMs: 500,
-      wrongSoFar: [wrongIds[0]!],
-    });
+  it("does not care how long the guess took, only what it cost", () => {
+    // The clock is a backstop here, not the currency — typing speed must not
+    // become the thing being measured.
+    const quick = heardleMode.judge({ plan, guess: plan.answer.title, elapsedMs: 200, level: 1 });
+    const slow = heardleMode.judge({ plan, guess: plan.answer.title, elapsedMs: 30_000, level: 1 });
+    expect(quick.gained).toBe(slow.gained);
+  });
+
+  it("spends a level on a wrong guess and keeps the round alive", () => {
+    const out = heardleMode.judge({ plan, guess: wrong, elapsedMs: 500, level: 0 });
+    expect(out).toEqual({ correct: false, gained: 0, final: false, level: 1 });
+  });
+
+  it("ends the round on a wrong guess at the top of the ladder", () => {
+    const last = plan.stagesMs.length - 1;
+    const out = heardleMode.judge({ plan, guess: wrong, elapsedMs: 500, level: last });
     expect(out.final).toBe(true);
-    expect(HEARDLE_MAX_WRONG).toBe(2);
+    expect(out.gained).toBe(0);
+    // Still capped: there is no level above the last one.
+    expect(out.level).toBe(last);
   });
 
-  it("pays the tier the clip had reached, minus what was already spent", () => {
-    const early = heardleMode.judge({
-      plan,
-      choiceId: plan.answer.id,
-      elapsedMs: 200,
-      wrongSoFar: [],
+  it("accepts the title without its production suffix", () => {
+    const suffixed = {
+      ...plan,
+      answer: { ...plan.answer, title: "ผลข้างเคียง (Love Effects) [feat. BILLKIN]" },
+    };
+    const out = heardleMode.judge({
+      plan: suffixed,
+      guess: "ผลข้างเคียง",
+      elapsedMs: 500,
+      level: 0,
     });
-    const late = heardleMode.judge({
-      plan,
-      choiceId: plan.answer.id,
-      elapsedMs: 12_000,
-      wrongSoFar: [],
-    });
-    const earlyButBurnt = heardleMode.judge({
-      plan,
-      choiceId: plan.answer.id,
-      elapsedMs: 200,
-      wrongSoFar: [wrongIds[0]!],
-    });
-
-    expect(early.gained).toBeGreaterThan(late.gained);
-    expect(earlyButBurnt.gained).toBe(early.gained - HEARDLE_WRONG_PENALTY);
-    expect(early.final).toBe(true);
+    expect(out.correct).toBe(true);
   });
 
-  it("judges both heardle modes identically — only who owns the round differs", () => {
-    const input = { plan, choiceId: plan.answer.id, elapsedMs: 3_000, wrongSoFar: [] };
+  it("judges both heardle modes identically — only who owns the ladder differs", () => {
+    const input = { plan, guess: plan.answer.title, elapsedMs: 3_000, level: 1 };
     expect(heardleCoopMode.judge(input)).toEqual(heardleMode.judge(input));
     expect(heardleMode.shared).toBe(false);
     expect(heardleCoopMode.shared).toBe(true);
-    expect(quizMode.shared).toBe(false);
+    expect(heardleMode.typed && heardleCoopMode.typed).toBe(true);
+    expect(quizMode.typed).toBe(false);
   });
 });

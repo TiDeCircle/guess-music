@@ -404,11 +404,10 @@ describe("lockstep sequence", () => {
 });
 
 /**
- * Heardle is the first mode where a round survives a wrong answer, and the
- * co-op variant is the first where one player's tap moves everyone's score.
- * Both break assumptions the quiz rounds above were written under, so they are
- * exercised through the same store rather than only through the mode's own
- * pure functions.
+ * Heardle changes two things the Quiz rounds above were written under: a round
+ * survives a wrong answer, and in the co-op variant one player's guess moves
+ * everyone's score. Both are exercised through the store rather than only
+ * through the mode's own pure functions.
  */
 async function startHeardle(
   room: ReturnType<typeof seed>["room"],
@@ -425,77 +424,128 @@ async function startHeardle(
   for (const player of room.players.values()) store.markReady(room, player.id, 0);
 }
 
-/** The current round's answer, and its wrong options in a stable order. */
-function board(room: ReturnType<typeof seed>["room"]) {
-  const plan = room.match!.rounds[room.match!.index]!;
-  return {
-    correct: plan.answer.id,
-    wrong: plan.choices.filter((c) => c.id !== plan.answer.id).map((c) => c.id),
-  };
-}
+const answerOf = (room: ReturnType<typeof seed>["room"]) =>
+  room.match!.rounds[room.match!.index]!.answer.title;
+
+const WRONG = "A Song That Is Not Playing";
+
+/** This player's unlock level as the clients see it. */
+const levelOf = (room: ReturnType<typeof seed>["room"], playerId: string) =>
+  toRoomState(room).round!.levels.find((l) => l.playerId === playerId)!.level;
 
 describe("heardle rounds", () => {
-  it("keeps a player in the round after one wrong guess", async () => {
+  it("sends the client no options to recognise", async () => {
     const { room, ids } = seed(2);
     await startHeardle(room, ids[0]!, "heardle");
-    const { wrong } = board(room);
+    expect(toRoomState(room).round!.choices).toEqual([]);
+    expect(JSON.stringify(toRoomState(room))).not.toContain(answerOf(room));
+  });
 
-    const outcome = store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    expect(outcome).toEqual({ correct: false, final: false });
+  it("accepts a typed title and pays the level it was guessed at", async () => {
+    const { room, ids } = seed(2);
+    await startHeardle(room, ids[0]!, "heardle");
+
+    const out = store.submitAnswer(room, ids[0]!, 0, answerOf(room));
+    expect(out).toEqual({ correct: true, final: true, level: 0 });
+    expect(room.players.get(ids[0]!)!.score).toBeGreaterThan(0);
+  });
+
+  it("keeps the round open after a wrong guess, one level down", async () => {
+    const { room, ids } = seed(2);
+    await startHeardle(room, ids[0]!, "heardle");
+
+    const out = store.submitAnswer(room, ids[0]!, 0, WRONG);
+    expect(out).toEqual({ correct: false, final: false, level: 1 });
     expect(room.phase).toBe("playing");
-    // Not yet answered: the round is still waiting on them.
     expect(toRoomState(room).answeredPlayerIds).not.toContain(ids[0]);
+    expect(levelOf(room, ids[0]!)).toBe(1);
   });
 
-  it("still pays a correct answer after a wrong one, less the penalty", async () => {
+  it("pays less for the same answer after a level is spent", async () => {
     const { room, ids } = seed(2);
     await startHeardle(room, ids[0]!, "heardle");
-    const { correct, wrong } = board(room);
+    const title = answerOf(room);
 
-    store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    store.submitAnswer(room, ids[0]!, 0, correct);
-    store.submitAnswer(room, ids[1]!, 0, correct);
+    store.unlock(room, ids[0]!, 0);
+    store.submitAnswer(room, ids[0]!, 0, title);
+    store.submitAnswer(room, ids[1]!, 0, title);
 
-    const burnt = room.players.get(ids[0]!)!.score;
-    const clean = room.players.get(ids[1]!)!.score;
-    expect(burnt).toBeGreaterThan(0);
-    expect(burnt).toBeLessThan(clean);
+    expect(room.players.get(ids[0]!)!.score).toBeLessThan(
+      room.players.get(ids[1]!)!.score,
+    );
   });
 
-  it("ends that player's round on the second wrong guess", async () => {
+  it("ends the round for a player who runs off the top of the ladder", async () => {
     const { room, ids } = seed(2);
     await startHeardle(room, ids[0]!, "heardle");
-    const { correct, wrong } = board(room);
+    const ladder = room.match!.rounds[0]!.stagesMs.length;
 
-    store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    const last = store.submitAnswer(room, ids[0]!, 0, wrong[1]!);
-    expect(last).toEqual({ correct: false, final: true });
+    let last = null;
+    for (let i = 0; i < ladder; i++) {
+      last = store.submitAnswer(room, ids[0]!, 0, `${WRONG} ${i}`);
+    }
+    expect(last!.final).toBe(true);
     expect(toRoomState(room).answeredPlayerIds).toContain(ids[0]);
 
     // And the right answer no longer helps them.
-    store.submitAnswer(room, ids[0]!, 0, correct);
+    store.submitAnswer(room, ids[0]!, 0, answerOf(room));
     expect(room.players.get(ids[0]!)!.score).toBe(0);
   });
 
-  it("refuses an option the player already struck out", async () => {
+  it("keeps one player's tried titles to themselves", async () => {
     const { room, ids } = seed(2);
     await startHeardle(room, ids[0]!, "heardle");
-    const { wrong } = board(room);
 
-    store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    // A mis-tap on a dead option must not spend the second attempt.
-    expect(store.submitAnswer(room, ids[0]!, 0, wrong[0]!)).toBeNull();
-    expect(toRoomState(room).answeredPlayerIds).not.toContain(ids[0]);
+    store.submitAnswer(room, ids[0]!, 0, WRONG);
+    // Telling the room would hand everyone else a free elimination.
+    expect(toRoomState(room).round!.tried).toEqual([]);
   });
 
-  it("keeps one player's strikes off everyone else's board", async () => {
+  it("refuses a title already tried, without spending a rung", async () => {
     const { room, ids } = seed(2);
     await startHeardle(room, ids[0]!, "heardle");
-    const { wrong } = board(room);
 
-    store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    // Broadcasting this would hand the other player a free elimination.
-    expect(toRoomState(room).round!.strikes).toEqual([]);
+    store.submitAnswer(room, ids[0]!, 0, WRONG);
+    expect(store.submitAnswer(room, ids[0]!, 0, WRONG)).toBeNull();
+    expect(levelOf(room, ids[0]!)).toBe(1);
+  });
+
+  it("keeps one player's ladder off another's", async () => {
+    const { room, ids } = seed(2);
+    await startHeardle(room, ids[0]!, "heardle");
+
+    store.unlock(room, ids[0]!, 0);
+    store.unlock(room, ids[0]!, 0);
+    expect(levelOf(room, ids[0]!)).toBe(2);
+    expect(levelOf(room, ids[1]!)).toBe(0);
+  });
+
+  it("stops unlocking at the top of the ladder", async () => {
+    const { room, ids } = seed(1);
+    await startHeardle(room, ids[0]!, "heardle");
+    const last = room.match!.rounds[0]!.stagesMs.length - 1;
+
+    for (let i = 0; i < 10; i++) store.unlock(room, ids[0]!, 0);
+    expect(levelOf(room, ids[0]!)).toBe(last);
+  });
+
+  it("ignores an unlock aimed at a round that is not open", async () => {
+    const { room, ids } = seed(1);
+    await startHeardle(room, ids[0]!, "heardle");
+    store.unlock(room, ids[0]!, 5);
+    expect(levelOf(room, ids[0]!)).toBe(0);
+  });
+
+  it("starts every round back at the first level", async () => {
+    const { room, ids } = seed(1);
+    await startHeardle(room, ids[0]!, "heardle");
+    store.unlock(room, ids[0]!, 0);
+    store.submitAnswer(room, ids[0]!, 0, answerOf(room));
+
+    vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 100);
+    store.markReady(room, ids[0]!, 1);
+    expect(room.match!.index).toBe(1);
+    expect(levelOf(room, ids[0]!)).toBe(0);
   });
 });
 
@@ -503,9 +553,8 @@ describe("heardle co-op", () => {
   it("scores the whole room off one player's guess", async () => {
     const { room, ids } = seed(3);
     await startHeardle(room, ids[0]!, "heardle-coop");
-    const { correct } = board(room);
 
-    store.submitAnswer(room, ids[0]!, 0, correct);
+    store.submitAnswer(room, ids[0]!, 0, answerOf(room));
 
     const scores = ids.map((id) => room.players.get(id)!.score);
     expect(scores[0]).toBeGreaterThan(0);
@@ -513,38 +562,48 @@ describe("heardle co-op", () => {
     expect(room.phase).toBe("reveal");
   });
 
-  it("spends one shared pair of guesses, not one per player", async () => {
+  it("spends one shared ladder, whoever climbs it", async () => {
     const { room, ids } = seed(3);
     await startHeardle(room, ids[0]!, "heardle-coop");
-    const { correct, wrong } = board(room);
 
-    store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    const second = store.submitAnswer(room, ids[1]!, 0, wrong[1]!);
-    expect(second).toEqual({ correct: false, final: true });
+    store.unlock(room, ids[0]!, 0);
+    // One player's wrong guess costs the room its next level too.
+    store.submitAnswer(room, ids[1]!, 0, WRONG);
 
-    // Two wrong guesses from two different people ended it for all three.
-    expect(room.phase).toBe("reveal");
-    store.submitAnswer(room, ids[2]!, 0, correct);
-    expect(room.players.get(ids[2]!)!.score).toBe(0);
+    for (const id of ids) expect(levelOf(room, id)).toBe(2);
   });
 
-  it("shows the room which options its guesses burnt", async () => {
+  it("shows the room which titles it has already burnt", async () => {
     const { room, ids } = seed(3);
     await startHeardle(room, ids[0]!, "heardle-coop");
-    const { wrong } = board(room);
 
-    store.submitAnswer(room, ids[0]!, 0, wrong[0]!);
-    // Shared attempts are only playable if everyone can see what is gone.
-    expect(toRoomState(room).round!.strikes).toEqual([wrong[0]]);
+    store.submitAnswer(room, ids[0]!, 0, WRONG);
+    // A shared ladder is unplayable unless everyone can see what is spent.
+    expect(toRoomState(room).round!.tried).toEqual([WRONG]);
+
+    // And a teammate repeating it costs the room nothing.
+    expect(store.submitAnswer(room, ids[1]!, 0, WRONG)).toBeNull();
+    for (const id of ids) expect(levelOf(room, id)).toBe(1);
+  });
+
+  it("ends the round for everyone when the room runs out of ladder", async () => {
+    const { room, ids } = seed(3);
+    await startHeardle(room, ids[0]!, "heardle-coop");
+    const ladder = room.match!.rounds[0]!.stagesMs.length;
+
+    // Guesses from different people, all spending the same shared ladder.
+    for (let i = 0; i < ladder; i++) store.submitAnswer(room, ids[i % 3]!, 0, `${WRONG} ${i}`);
+
+    expect(room.phase).toBe("reveal");
+    for (const id of ids) expect(room.players.get(id)!.score).toBe(0);
   });
 
   it("does not wait on someone who joined after the round opened", async () => {
     const { room, ids } = seed(2);
     await startHeardle(room, ids[0]!, "heardle-coop");
     store.joinRoom(room.code, "Latecomer", "sock-late");
-    const { correct } = board(room);
 
-    store.submitAnswer(room, ids[0]!, 0, correct);
+    store.submitAnswer(room, ids[0]!, 0, answerOf(room));
     expect(room.phase).toBe("reveal");
   });
 });

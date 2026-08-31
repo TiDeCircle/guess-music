@@ -99,9 +99,12 @@ export default function Page() {
           room={game.room}
           playerId={game.playerId}
           history={game.history}
-          strikes={game.strikes}
+          wrongGuesses={game.wrongGuesses}
+          level={game.myLevel}
           serverNow={game.serverNow}
-          onAnswer={game.answer}
+          onAnswer={(index, guess) => void game.answer(index, guess)}
+          onUnlock={game.unlock}
+          onReplay={game.replayClip}
         />
       )}
 
