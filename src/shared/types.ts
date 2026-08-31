@@ -165,10 +165,33 @@ export type RevealView = {
   /** Per player: what they picked and what it earned. */
   results: Array<{
     playerId: string;
+    /** A choice id in Quiz, the typed title in Heardle. Null if they never answered. */
     choiceId: string | null;
     correct: boolean;
     gained: number;
     totalScore: number;
+    /** ms from the Round opening to the answer landing. Null if none came. */
+    elapsedMs: number | null;
+    /** Heardle: how far the clip had been unlocked when the answer landed. */
+    level: number;
+    /**
+     * Who actually guessed. Only differs from `playerId` in a shared mode,
+     * where one person's answer is written onto everybody's row — without this
+     * a co-op reveal is one result wearing eight names and no way to tell whose
+     * it was.
+     */
+    byPlayerId: string | null;
+    /**
+     * Every title they tried and had rejected, in the order they tried them.
+     *
+     * A Heardle player who guessed twice and ran out of time has no final
+     * answer at all, so without this the reveal said they never answered — and
+     * "what did you put?" is the first thing the room asks. Shared modes carry
+     * the Room's list here, since the guesses were the Room's — and each one
+     * names whoever typed it, which is the only way a co-op reveal can say who
+     * spent the rung.
+     */
+    tried: Array<{ text: string; byPlayerId: string }>;
   }>;
 };
 

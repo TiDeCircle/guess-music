@@ -1,5 +1,6 @@
 import type { Choice, Track } from "../types";
 import type { DecoyStrategy, DifficultySpec } from "../difficulty";
+import { titleKeys } from "../answer";
 import { shuffle, type Rng } from "../rng";
 import type { BuildRoundsInput, RoundPlan } from "./index";
 
@@ -28,9 +29,16 @@ const toChoice = (t: Track): Choice => ({
  * This deliberately rejects more pairs than it used to. A cover by a different
  * act was previously allowed alongside the original because the artist line
  * told them apart; nothing tells them apart now.
+ *
+ * It compares through `titleKeys`, which also strips the production suffix, so
+ * "ฝุ่น" and "ฝุ่น (Version Piano)" count as one song. They were two tiles
+ * reading the same thing with one of them wrong — and it is the same rule the
+ * typed answers are graded by, so both modes now agree on what one song is.
  */
-const sameLabel = (a: Track, b: Track) =>
-  a.title.trim().toLowerCase() === b.title.trim().toLowerCase();
+const sameLabel = (a: Track, b: Track) => {
+  const left = titleKeys(a.title);
+  return titleKeys(b.title).some((k) => left.includes(k));
+};
 
 /**
  * Build the wrong options for one Round.

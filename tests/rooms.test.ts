@@ -639,3 +639,133 @@ describe("heardle co-op", () => {
     expect(room.phase).toBe("reveal");
   });
 });
+
+/**
+ * What the reveal has to say beyond who was right.
+ *
+ * These exist because the round is over but the argument is not: the first
+ * thing a room asks is who got it faster, and in co-op, whose guess it actually
+ * was — one person answers and everybody is scored for it.
+ */
+/**
+ * Opens a Quiz round and gets past the count-in.
+ *
+ * Answers are refused until the music actually starts, so a test that submits
+ * during the lead-in records nothing and the round never closes.
+ */
+async function openQuizRound(room: ReturnType<typeof seed>["room"], ids: string[]) {
+  await startMedium(room, ids[0]!);
+  for (const id of ids) store.markReady(room, id, 0);
+  goLive(room);
+}
+
+describe("what the reveal reports", () => {
+  it("times each answer from the round opening", async () => {
+    const { room, ids } = seed(2);
+    await openQuizRound(room, ids);
+    const correct = room.match!.rounds[0]!.answer.id;
+
+    vi.advanceTimersByTime(1_500);
+    store.submitAnswer(room, ids[0]!, 0, correct);
+    vi.advanceTimersByTime(3_000);
+    store.submitAnswer(room, ids[1]!, 0, correct);
+
+    const at = (id: string) =>
+      room.reveal!.results.find((r) => r.playerId === id)!.elapsedMs!;
+    expect(at(ids[0]!)).toBeGreaterThanOrEqual(1_500);
+    expect(at(ids[1]!)).toBeGreaterThanOrEqual(4_500);
+    // And the one who was quicker is visibly quicker, not merely higher-scoring.
+    expect(at(ids[0]!)).toBeLessThan(at(ids[1]!));
+  });
+
+  it("leaves the time empty for a player who never answered", async () => {
+    const { room, ids } = seed(2);
+    await openQuizRound(room, ids);
+
+    store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
+    vi.advanceTimersByTime(room.match!.rounds[0]!.answerWindowMs + 50);
+
+    const quiet = room.reveal!.results.find((r) => r.playerId === ids[1])!;
+    expect(quiet.elapsedMs).toBeNull();
+    expect(quiet.choiceId).toBeNull();
+    expect(quiet.byPlayerId).toBeNull();
+  });
+
+  it("names whoever actually guessed", async () => {
+    const { room, ids } = seed(2);
+    await openQuizRound(room, ids);
+    const plan = room.match!.rounds[0]!;
+
+    store.submitAnswer(room, ids[0]!, 0, plan.answer.id);
+    store.submitAnswer(room, ids[1]!, 0, plan.answer.id);
+
+    for (const id of ids) {
+      const row = room.reveal!.results.find((r) => r.playerId === id)!;
+      expect(row.byPlayerId).toBe(id);
+    }
+  });
+
+  it("records the level a heardle answer was bought at", async () => {
+    const { room, ids } = seed(2);
+    await startHeardle(room, ids[0]!, "heardle");
+    const title = answerOf(room);
+
+    store.unlock(room, ids[0]!, 0);
+    store.unlock(room, ids[0]!, 0);
+    store.submitAnswer(room, ids[0]!, 0, title);
+    store.submitAnswer(room, ids[1]!, 0, title);
+
+    const at = (id: string) =>
+      room.reveal!.results.find((r) => r.playerId === id)!.level;
+    expect(at(ids[0]!)).toBe(2);
+    expect(at(ids[1]!)).toBe(0);
+  });
+
+  it("credits one co-op guess to the player who made it, not to everyone", async () => {
+    const { room, ids } = seed(3);
+    await startHeardle(room, ids[0]!, "heardle-coop");
+
+    // The second player answers; the whole room is scored for it.
+    store.submitAnswer(room, ids[1]!, 0, answerOf(room));
+
+    const rows = room.reveal!.results;
+    expect(rows).toHaveLength(3);
+    // Every row carries the same result...
+    expect(new Set(rows.map((r) => r.gained)).size).toBe(1);
+    // ...and every row says who it belonged to.
+    for (const row of rows) expect(row.byPlayerId).toBe(ids[1]);
+  });
+
+  it("keeps the typed title on the row, so the reveal can show it", async () => {
+    const { room, ids } = seed(2);
+    await startHeardle(room, ids[0]!, "heardle");
+    const guess = "Something That Is Not It";
+
+    store.submitAnswer(room, ids[0]!, 0, guess);
+    vi.advanceTimersByTime(room.match!.rounds[0]!.answerWindowMs + 50);
+
+    // No final answer was ever recorded — the round timed out on them — but
+    // the reveal still has to be able to say what they put.
+    const row = room.reveal!.results.find((r) => r.playerId === ids[0])!;
+    expect(row.choiceId).toBeNull();
+    expect(row.tried).toEqual([{ text: guess, byPlayerId: ids[0] }]);
+  });
+
+  it("carries the room's rejected guesses onto every co-op row", async () => {
+    const { room, ids } = seed(3);
+    await startHeardle(room, ids[0]!, "heardle-coop");
+
+    store.submitAnswer(room, ids[0]!, 0, "Wrong One");
+    store.submitAnswer(room, ids[1]!, 0, "Wrong Two");
+    store.submitAnswer(room, ids[2]!, 0, answerOf(room));
+
+    for (const id of ids) {
+      const row = room.reveal!.results.find((r) => r.playerId === id)!;
+      // Each rung the room spent is credited to whoever spent it.
+      expect(row.tried).toEqual([
+        { text: "Wrong One", byPlayerId: ids[0] },
+        { text: "Wrong Two", byPlayerId: ids[1] },
+      ]);
+    }
+  });
+});

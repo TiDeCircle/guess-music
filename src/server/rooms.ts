@@ -103,6 +103,10 @@ type SubmittedAnswer = {
   elapsedMs: number;
   correct: boolean;
   gained: number;
+  /** Heardle: the unlock level the guess was made at. */
+  level: number;
+  /** Whoever actually guessed — in a shared mode that is not everyone it lands on. */
+  byPlayerId: string;
 };
 
 type ActiveMatch = {
@@ -117,8 +121,12 @@ type ActiveMatch = {
    * — or by TEAM_KEY alone when the mode is shared.
    */
   levels: Map<string, number>;
-  /** Wrong titles already tried, keyed the same way as `levels`. */
-  tried: Map<string, string[]>;
+  /**
+   * Wrong titles already tried, keyed the same way as `levels`, each with
+   * whoever typed it — in a shared mode the list belongs to the Room and the
+   * name is the only record of who spent the rung.
+   */
+  tried: Map<string, Array<{ text: string; byPlayerId: string }>>;
   ready: Set<string>;
 };
 
@@ -589,7 +597,7 @@ export class RoomStore {
     const tried = match.tried.get(key) ?? [];
     // Sending a title that has already failed is a mis-tap or a teammate who
     // did not look; either way it must not cost a rung.
-    if (tried.some((t) => t.toLowerCase() === guess.toLowerCase())) return null;
+    if (tried.some((t) => t.text.toLowerCase() === guess.toLowerCase())) return null;
 
     const level = match.levels.get(key) ?? 0;
 
@@ -598,14 +606,18 @@ export class RoomStore {
     const judged = mode.judge({ plan, guess, elapsedMs, level });
 
     match.levels.set(key, judged.level);
-    if (!judged.correct) match.tried.set(key, [...tried, guess]);
+    if (!judged.correct) {
+      match.tried.set(key, [...tried, { text: guess, byPlayerId: playerId }]);
+    }
 
     if (judged.final) {
-      const record = {
+      const record: SubmittedAnswer = {
         choiceId: guess,
         elapsedMs,
         correct: judged.correct,
         gained: judged.gained,
+        level: judged.level,
+        byPlayerId: playerId,
       };
       // A shared mode scores the Room, not the guesser: everyone connected ends
       // the Round with the same result and the same points.
@@ -673,6 +685,10 @@ export class RoomStore {
           correct: a?.correct ?? false,
           gained: a?.gained ?? 0,
           totalScore: p.score,
+          elapsedMs: a?.elapsedMs ?? null,
+          level: a?.level ?? 0,
+          byPlayerId: a?.byPlayerId ?? null,
+          tried: match.tried.get(this.ownerKey(room, p.id)) ?? [],
         };
       }),
     };
@@ -761,8 +777,10 @@ export function toRoomState(room: Room): RoomState {
               MODES[room.config.mode].shared ? TEAM_KEY : p.id,
             ) ?? 0,
         })),
+        // The Round view only needs the words, so the answer box can drop an
+        // option that has already failed.
         tried: MODES[room.config.mode].shared
-          ? (match.tried.get(TEAM_KEY) ?? [])
+          ? (match.tried.get(TEAM_KEY) ?? []).map((t) => t.text)
           : [],
         deadlineAt: match.deadlineAt,
         startAt: match.startAt,

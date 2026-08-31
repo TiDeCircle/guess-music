@@ -40,9 +40,18 @@ async function getJson(url: string): Promise<any> {
   return res.json();
 }
 
-/** title + artist, flattened the way the answer box compares them. */
+/**
+ * title + artist, flattened only as far as it is safe to.
+ *
+ * `\p{M}` is kept deliberately. Thai vowel signs and tone marks are Unicode
+ * *marks*, not letters, so a class of `\p{L}\p{N}` drops them — and this key
+ * decides which songs survive deduplication. Without the marks, จีบ collided
+ * with จูบ and simply never made it into the file, so a player could type it
+ * correctly and be told it does not exist. Same reasoning as `titleKeys` in
+ * src/shared/answer.ts, which grades the answers.
+ */
 const key = (title: string, artist: string) =>
-  `${title} ${artist}`.toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, "");
+  `${title} ${artist}`.toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}\p{M} ]+/gu, "");
 
 const byArtist = new Map<string, Map<string, string>>();
 let seen = 0;

@@ -18,6 +18,11 @@ export type SongEntry = {
   artist: string;
   /** Title and artist flattened, for matching what someone types. */
   search: string;
+  /**
+   * The title alone, flattened, with and without its production suffix — what
+   * somebody typing the song they know would produce.
+   */
+  exact: [string, string];
 };
 
 type IndexFile = {
@@ -48,7 +53,16 @@ export function loadSongIndex(): Promise<SongEntry[]> {
       const out: SongEntry[] = [];
       for (const [artist, titles] of file.artists) {
         for (const title of titles) {
-          out.push({ title, artist, search: flatten(title) + " " + flatten(artist) });
+          const bare = flatten(title);
+          const core = flatten(
+            title.replace(/[([{][^)\]}]*[)\]}]/gu, " ").replace(/\s[-–—]\s.*$/u, " "),
+          );
+          out.push({
+            title,
+            artist,
+            search: bare + " " + flatten(artist),
+            exact: [bare, core || bare],
+          });
         }
       }
       return out;
@@ -63,17 +77,25 @@ export function loadSongIndex(): Promise<SongEntry[]> {
   return pending;
 }
 
-/** At most this many songs by any one artist, so no act owns the list. */
+/**
+ * At most this many songs by any one artist — among the *loose* matches only.
+ *
+ * The cap exists because the index is grouped by artist, so an unrestricted
+ * scan of "แสง" handed back five Bodyslam songs and hid every other band with a
+ * song by that name. Applying it to exact matches too was a worse bug: 11% of
+ * the catalogue could not be found by typing its own title, because an artist
+ * with a Live, a JP and an Unplugged version of the same song used up the
+ * allowance before the version you meant.
+ */
 const PER_ARTIST = 2;
 
 /**
  * The entries worth showing for what has been typed so far.
  *
- * Two rules, both learned from watching it get them wrong. Titles that *start*
- * with the query come first: someone typing "แสง" wants "แสงสุดท้าย" above a
- * song with "แสง" buried in the middle. And no artist may fill the list —
- * the index is grouped by artist, so an unrestricted scan handed back five
- * Bodyslam songs and hid every other band who has a song by that name.
+ * Three tiers. A title typed in full is never held back, whoever recorded it —
+ * that is the whole promise of the box. Below that, titles that *start* with
+ * the query come before ones that merely contain it, and both are rationed per
+ * artist so no single act can fill the list.
  */
 export function searchSongs(
   index: readonly SongEntry[],
@@ -83,15 +105,17 @@ export function searchSongs(
   const q = flatten(query);
   if (q.length === 0) return [];
 
+  const exact: SongEntry[] = [];
   const starts: SongEntry[] = [];
   const contains: SongEntry[] = [];
   for (const entry of index) {
-    if (entry.search.startsWith(q)) starts.push(entry);
+    if (entry.exact[0] === q || entry.exact[1] === q) exact.push(entry);
+    else if (entry.search.startsWith(q)) starts.push(entry);
     else if (entry.search.includes(q)) contains.push(entry);
   }
 
+  const out: SongEntry[] = exact.slice(0, limit);
   const seen = new Map<string, number>();
-  const out: SongEntry[] = [];
   for (const entry of [...starts, ...contains]) {
     if (out.length >= limit) break;
     const used = seen.get(entry.artist) ?? 0;

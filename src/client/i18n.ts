@@ -196,6 +196,10 @@ export const STRINGS = {
   wrong: { th: "ผิด", en: "Wrong" },
   noAnswer: { th: "ไม่ได้ตอบ", en: "No answer" },
   theAnswer: { th: "คำตอบ", en: "Answer" },
+  thisRound: { th: "ผลรอบนี้", en: "This round" },
+  answeredWith: { th: "ตอบ", en: "Answered" },
+  unlockedTo: { th: "ปลดล็อคถึง", en: "unlocked to" },
+  fastest: { th: "ไวที่สุด", en: "Fastest" },
 
   finalScore: { th: "คะแนนรวม", en: "Final score" },
   standings: { th: "อันดับ", en: "Standings" },
