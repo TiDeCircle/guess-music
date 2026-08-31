@@ -87,13 +87,21 @@
  * a gap under it lands on the page rather than on the control, so it stays
  * visible on a solid button and an outlined one alike, in either theme.
  *
- * This sits outside every layer, so it also reaches the fields that set
- * `outline-none` for the mouse. Their accent underline still does the talking;
- * the ring is what tells a keyboard where it is.
+ * Fields are excluded. A text input matches `:focus-visible` even when script
+ * put the caret there, so the ring was boxing the name field on every desktop
+ * load — and a box drawn round a field whose only visible edge is its underline
+ * reads as an error, not a cursor. They say it with that underline instead,
+ * which thickens as well as changing colour so it is not carried by colour
+ * alone.
  */
 :focus-visible {
   outline: 2px solid var(--color-ink);
   outline-offset: 2px;
+}
+
+input:focus-visible,
+input:focus {
+  outline: none;
 }
 
 html,

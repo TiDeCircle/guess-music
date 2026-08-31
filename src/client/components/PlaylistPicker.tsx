@@ -109,7 +109,7 @@ export function PlaylistPicker({
           onChange={(e) => setFilter(e.target.value)}
           placeholder={t("filterArtists")}
           autoComplete="off"
-          className="mt-3 w-full border-b border-ink bg-transparent pb-2 outline-none placeholder:text-grey-300 focus:border-accent"
+          className="mt-3 w-full border-b border-ink bg-transparent pb-2 focus:border-b-2 focus:pb-[7px] outline-none placeholder:text-grey-300 focus:border-accent"
           style={{ fontSize: "var(--text-body)" }}
         />
 

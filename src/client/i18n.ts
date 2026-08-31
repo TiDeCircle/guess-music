@@ -29,6 +29,17 @@ export const STRINGS = {
   roomCode: { th: "รหัสห้อง", en: "Room code" },
   codePlaceholder: { th: "รหัส 4 ตัว", en: "4 letters" },
 
+  routeCreate: { th: "สร้างห้องใหม่", en: "Start a new room" },
+  routeCreateHint: {
+    th: "คุณจะเป็นหัวห้อง เลือกโหมด เพลย์ลิสต์ และความยากเอง แล้วส่งรหัสให้เพื่อน",
+    en: "You host it: pick the mode, the songs and the difficulty, then send the code to your friends.",
+  },
+  routeJoin: { th: "เข้าห้องที่มีอยู่", en: "Join a room" },
+  routeJoinHint: {
+    th: "ใส่รหัสที่เพื่อนส่งมา หรือเลือกจากห้องที่เปิดอยู่ข้างล่าง",
+    en: "Enter the code a friend sent you, or pick one of the open rooms below.",
+  },
+
   statModes: { th: "โหมด", en: "Modes" },
   statPlaylists: { th: "เพลย์ลิสต์", en: "Playlists" },
   statArtists: { th: "ศิลปิน", en: "Artists" },
