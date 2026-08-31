@@ -1,6 +1,7 @@
 "use client";
 
 import type { RoomState } from "@/shared/types";
+import { MODES } from "@/shared/modes";
 import { useLang } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
 
@@ -15,7 +16,12 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
   if (!reveal) return null;
 
   const byId = new Map(room.players.map((p) => [p.id, p]));
-  const rows = [...reveal.results].sort((a, b) => b.totalScore - a.totalScore);
+  // A co-op round is one result wearing eight names: everyone scored the same
+  // thing off the same guess, so it is reported once, as the room.
+  const shared = MODES[room.config.mode].shared;
+  const rows = shared
+    ? reveal.results.slice(0, 1)
+    : [...reveal.results].sort((a, b) => b.totalScore - a.totalScore);
 
   return (
     <div className="grid gap-10 md:grid-cols-12 md:gap-8">
@@ -43,7 +49,7 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
       </section>
 
       <section className="md:col-span-6">
-        <FieldLabel>{t("standings")}</FieldLabel>
+        <FieldLabel>{shared ? t("teamScore") : t("standings")}</FieldLabel>
         <ul className="mt-2">
           {rows.map((r) => {
             const player = byId.get(r.playerId);
@@ -64,8 +70,8 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
                   }
                   style={{ fontSize: "var(--text-body)" }}
                 >
-                  {player.name}
-                  {r.playerId === playerId ? ` · ${t("you")}` : ""}
+                  {shared ? t("teamName") : player.name}
+                  {!shared && r.playerId === playerId ? ` · ${t("you")}` : ""}
                 </span>
                 <span className="label text-grey-500">
                   {r.correct ? t("correct") : answered ? t("wrong") : t("noAnswer")}

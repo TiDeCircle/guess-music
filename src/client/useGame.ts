@@ -103,6 +103,17 @@ export function useGame() {
   /** Track id currently being replayed on the recap screen, if any. */
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [roomList, setRoomList] = useState<RoomListing[]>([]);
+  /**
+   * This player's own wrong Heardle guesses, and the Round they belong to.
+   *
+   * Kept with the index rather than cleared by an effect: strikes arrive on
+   * their own event, so a strike for the round that just ended must not be able
+   * to land on the next one's options.
+   */
+  const [strikeLog, setStrikeLog] = useState<{ index: number; ids: string[] }>({
+    index: -1,
+    ids: [],
+  });
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
@@ -169,6 +180,16 @@ export function useGame() {
     socket.on("disconnect", () => setStatus("offline"));
     socket.on("room:state", (next) => setRoom(next));
     socket.on("rooms:listing", (rooms) => setRoomList(rooms));
+    socket.on("round:strike", ({ index, choiceId }) => {
+      setStrikeLog((prev) =>
+        prev.index === index
+          ? {
+              index,
+              ids: prev.ids.includes(choiceId) ? prev.ids : [...prev.ids, choiceId],
+            }
+          : { index, ids: [choiceId] },
+      );
+    });
     socket.on("room:error", (e) => setError(e.message));
     socket.on("room:closed", () => {
       writeSession(null);
@@ -320,6 +341,7 @@ export function useGame() {
     setError(null);
     setHistory([]);
     setPreviewingId(null);
+    setStrikeLog({ index: -1, ids: [] });
     readyForRef.current = -1;
     playedRef.current = -1;
     socketRef.current?.emit("match:start");
@@ -374,6 +396,12 @@ export function useGame() {
     [room, playerId],
   );
 
+  /** Struck options for the Round on screen, and only that Round. */
+  const strikes = useMemo(
+    () => (room?.round && strikeLog.index === room.round.index ? strikeLog.ids : []),
+    [room?.round, strikeLog],
+  );
+
   return {
     status,
     room,
@@ -386,6 +414,7 @@ export function useGame() {
     volumeStep,
     setVolumeStep,
     history,
+    strikes,
     previewingId,
     togglePreview,
     createRoom,

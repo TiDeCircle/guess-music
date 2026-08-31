@@ -55,8 +55,8 @@ export function RoomBrowser({
                     {label}
                   </span>
                   <span className="label block text-grey-500">
-                    {room.playerCount}/{room.maxPlayers} ·{" "}
-                    {playing ? t("inMatch") : t("waiting")}
+                    {t(`mode.${room.mode}` as StringKey)} · {room.playerCount}/
+                    {room.maxPlayers} · {playing ? t("inMatch") : t("waiting")}
                   </span>
                 </span>
 

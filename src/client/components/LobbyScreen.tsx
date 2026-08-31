@@ -7,6 +7,7 @@ import { MAX_PLAYERS } from "@/shared/protocol";
 import { useLang, type StringKey } from "@/client/i18n";
 import { Button } from "./Button";
 import { FieldLabel } from "./Shell";
+import { ModePicker } from "./ModePicker";
 import { PlaylistPicker } from "./PlaylistPicker";
 
 const DIFFICULTY_LABEL: Record<DifficultyId, StringKey> = {
@@ -17,6 +18,9 @@ const DIFFICULTY_LABEL: Record<DifficultyId, StringKey> = {
 };
 
 const ROUND_OPTIONS = [5, 10, 15];
+
+/** The three questions a match needs answered, in the order they matter. */
+const STEPS = ["stepMode", "stepSongs", "stepSettings"] as const satisfies readonly StringKey[];
 
 export function LobbyScreen({
   room,
@@ -41,6 +45,12 @@ export function LobbyScreen({
 }) {
   const { t } = useLang();
   const [copied, setCopied] = useState(false);
+  /**
+   * Which setup step the host is on. Deliberately local: it is where one person
+   * is looking, not something the room needs to agree on, and syncing it would
+   * yank seven other screens around every time the host changed their mind.
+   */
+  const [step, setStep] = useState(0);
   const isHost = room.hostId === playerId;
 
   const copyCode = async () => {
@@ -117,8 +127,12 @@ export function LobbyScreen({
                   {p.name}
                 </span>
                 <span className="label text-grey-500">
-                  {p.id === room.hostId ? t("host") : ""}
-                  {p.id === playerId ? ` · ${t("you")}` : ""}
+                  {/* Joined here rather than concatenated: a non-host looking at
+                      their own row used to get a separator with nothing in
+                      front of it. */}
+                  {[p.id === room.hostId ? t("host") : "", p.id === playerId ? t("you") : ""]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </li>
             ))}
@@ -127,67 +141,109 @@ export function LobbyScreen({
       </section>
 
       <section className="flex flex-col gap-8 md:col-span-7">
-        <PlaylistPicker
-          value={room.config.source}
-          disabled={!isHost}
-          onSelect={(source) => patch({ source })}
-        />
+        {isHost ? (
+          <>
+            <Stepper current={step} onGo={setStep} />
 
-        <div>
-          <FieldLabel>{t("difficulty")}</FieldLabel>
-          <OptionRow
-            options={DIFFICULTY_ORDER.map((id) => ({
-              id,
-              label: t(DIFFICULTY_LABEL[id]),
-              hint: (
-                <span className="flex items-center gap-2">
-                  <ClipBar clipMs={DIFFICULTIES[id].clipMs} />
-                  <span className="numeric">×{DIFFICULTIES[id].multiplier}</span>
-                </span>
-              ),
-            }))}
-            value={room.config.difficulty}
-            disabled={!isHost}
-            onSelect={(difficulty) => patch({ difficulty: difficulty as DifficultyId })}
-          />
-        </div>
+            {step === 0 && (
+              <ModePicker
+                value={room.config.mode}
+                disabled={false}
+                onSelect={(mode) => patch({ mode })}
+              />
+            )}
 
-        <div>
-          <FieldLabel>{t("rounds")}</FieldLabel>
-          <OptionRow
-            // Bare numbers sit directly under a difficulty row labelled
-            // "15S · ×0.75" and get read as seconds. The unit is not decoration.
-            options={ROUND_OPTIONS.map((n) => ({
-              id: String(n),
-              label: `${n} ${t("roundsUnit")}`,
-            }))}
-            value={String(room.config.roundCount)}
-            disabled={!isHost}
-            onSelect={(n) => patch({ roundCount: Number(n) })}
-          />
-        </div>
+            {step === 1 && (
+              <PlaylistPicker
+                value={room.config.source}
+                disabled={false}
+                onSelect={(source) => patch({ source })}
+              />
+            )}
+
+            {step === 2 && (
+              <>
+                <div>
+                  <FieldLabel>{t("difficulty")}</FieldLabel>
+                  <OptionRow
+                    options={DIFFICULTY_ORDER.map((id) => ({
+                      id,
+                      label: t(DIFFICULTY_LABEL[id]),
+                      hint: (
+                        <span className="flex items-center gap-2">
+                          <ClipBar clipMs={DIFFICULTIES[id].clipMs} />
+                          <span className="numeric">×{DIFFICULTIES[id].multiplier}</span>
+                        </span>
+                      ),
+                    }))}
+                    value={room.config.difficulty}
+                    disabled={false}
+                    onSelect={(difficulty) =>
+                      patch({ difficulty: difficulty as DifficultyId })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>{t("rounds")}</FieldLabel>
+                  <OptionRow
+                    // Bare numbers sit directly under a difficulty row labelled
+                    // "15S · ×0.75" and get read as seconds. The unit is not
+                    // decoration.
+                    options={ROUND_OPTIONS.map((n) => ({
+                      id: String(n),
+                      label: `${n} ${t("roundsUnit")}`,
+                    }))}
+                    value={String(room.config.roundCount)}
+                    disabled={false}
+                    onSelect={(n) => patch({ roundCount: Number(n) })}
+                  />
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          // A player who cannot change any of this does not need three disabled
+          // panels to scroll past — only the answers, and who they are waiting
+          // on.
+          <Summary room={room} />
+        )}
 
         {/* Browsers refuse to start audio without a gesture, so we take one here
             rather than losing the first round to silence. */}
         {!audioUnlocked && (
-          <Button variant="outline" onClick={onUnlockAudio}>
-            {t("unlockAudio")}
-          </Button>
-        )}
-        {!audioUnlocked && (
-          <p className="label -mt-4 text-grey-500">{t("unlockHint")}</p>
+          <div>
+            <Button variant="outline" onClick={onUnlockAudio}>
+              {t("unlockAudio")}
+            </Button>
+            <p className="label mt-2 text-grey-500">{t("unlockHint")}</p>
+          </div>
         )}
 
         {/* Deliberately not pushed to the bottom of the column: the left side
             grows with the player list, and mt-auto would drag the host's only
             action below the fold. */}
-        <div className="grid grid-cols-[1fr_auto] gap-4">
+        <div className="grid grid-cols-[auto_1fr_auto] gap-4">
           {isHost ? (
-            <Button onClick={onStart} disabled={starting}>
-              {starting ? t("loadingTracks") : t("startMatch")}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setStep((s) => s - 1)}
+                disabled={step === 0}
+                className="w-auto"
+              >
+                ←
+              </Button>
+              {step < STEPS.length - 1 ? (
+                <Button onClick={() => setStep((s) => s + 1)}>{t("next")}</Button>
+              ) : (
+                <Button onClick={onStart} disabled={starting}>
+                  {starting ? t("loadingTracks") : t("startMatch")}
+                </Button>
+              )}
+            </>
           ) : (
-            <div className="label flex items-center border border-grey-300 px-6 py-4 text-grey-500">
+            <div className="label col-span-2 flex items-center border border-grey-300 px-6 py-4 text-grey-500">
               {t("waitingForHost")}
             </div>
           )}
@@ -196,6 +252,86 @@ export function LobbyScreen({
           </Button>
         </div>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Where the host is in setting the match up.
+ *
+ * The steps are numbered and stay clickable in both directions: this is a form
+ * split into three, not a wizard that has to be walked, and a host who only
+ * wants to change the difficulty should not have to page through the songs.
+ */
+function Stepper({
+  current,
+  onGo,
+}: {
+  current: number;
+  onGo: (step: number) => void;
+}) {
+  const { t } = useLang();
+  return (
+    <div className="grid grid-cols-3 gap-px bg-ink">
+      {STEPS.map((key, i) => {
+        const active = i === current;
+        return (
+          <button
+            key={key}
+            type="button"
+            aria-current={active ? "step" : undefined}
+            onClick={() => onGo(i)}
+            className={`flex items-baseline gap-2 px-3 py-3 text-left transition-colors ${
+              active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
+            }`}
+          >
+            <span
+              className={`numeric label ${active ? "text-grey-300" : "text-grey-500"}`}
+            >
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="label">{t(key)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Everything the host has chosen, for everyone who cannot change it. */
+function Summary({ room }: { room: RoomState }) {
+  const { t } = useLang();
+  const source =
+    room.config.source.kind === "artist"
+      ? room.config.source.artist
+      : t(`playlist.${room.config.source.playlist}` as StringKey);
+
+  const rows: Array<[string, string]> = [
+    [t("gameMode"), t(`mode.${room.config.mode}` as StringKey)],
+    [t("playlist"), source],
+    [t("difficulty"), t(DIFFICULTY_LABEL[room.config.difficulty])],
+    [t("rounds"), `${room.config.roundCount} ${t("roundsUnit")}`],
+  ];
+
+  return (
+    <div>
+      <FieldLabel>{t("lobby")}</FieldLabel>
+      <dl className="mt-2">
+        {rows.map(([term, value]) => (
+          <div
+            key={term}
+            className="flex items-baseline justify-between gap-4 border-b border-grey-300 py-3"
+          >
+            <dt className="label text-grey-500">{term}</dt>
+            <dd className="text-right" style={{ fontSize: "var(--text-body)" }}>
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="label mt-4 leading-relaxed text-grey-500">
+        {t(`mode.${room.config.mode}.hint` as StringKey)}
+      </p>
     </div>
   );
 }

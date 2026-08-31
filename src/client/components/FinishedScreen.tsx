@@ -1,6 +1,7 @@
 "use client";
 
 import type { RoomState } from "@/shared/types";
+import { MODES } from "@/shared/modes";
 import { useLang } from "@/client/i18n";
 import { Button } from "./Button";
 import { FieldLabel } from "./Shell";
@@ -27,12 +28,18 @@ export function FinishedScreen({
   const isHost = room.hostId === playerId;
   const standings = [...room.players].sort((a, b) => b.score - a.score);
   const winner = standings[0];
+  /**
+   * In a co-op match every player holds the same number, so a ranked table of
+   * eight identical scores would be a leaderboard of nobody. The headline
+   * becomes the room's total and the list drops its ranks.
+   */
+  const shared = MODES[room.config.mode].shared;
 
   return (
     <div className="flex flex-col gap-12">
       <div className="grid gap-12 md:grid-cols-12 md:gap-8">
         <section className="md:col-span-5">
-          <FieldLabel>{t("finalScore")}</FieldLabel>
+          <FieldLabel>{shared ? t("teamScore") : t("finalScore")}</FieldLabel>
           {winner && (
             <>
               <div
@@ -45,7 +52,7 @@ export function FinishedScreen({
                 className="mt-4 font-semibold"
                 style={{ fontSize: "var(--text-title)" }}
               >
-                {winner.name}
+                {shared ? t("teamName") : winner.name}
               </p>
             </>
           )}
@@ -68,7 +75,7 @@ export function FinishedScreen({
         </section>
 
         <section className="md:col-span-7">
-          <FieldLabel>{t("standings")}</FieldLabel>
+          <FieldLabel>{shared ? t("players") : t("standings")}</FieldLabel>
           <ol className="mt-2">
             {standings.map((p, i) => (
               <li
@@ -76,10 +83,10 @@ export function FinishedScreen({
                 className="grid grid-cols-[2rem_1fr_auto] items-baseline gap-4 border-b border-grey-300 py-4"
               >
                 <span className="numeric label text-grey-500">
-                  {String(i + 1).padStart(2, "0")}
+                  {shared ? "" : String(i + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className={i === 0 ? "font-semibold" : ""}
+                  className={!shared && i === 0 ? "font-semibold" : ""}
                   style={{ fontSize: "var(--text-body)" }}
                 >
                   {p.name}
@@ -89,7 +96,7 @@ export function FinishedScreen({
                   className="numeric font-semibold"
                   style={{ fontSize: "var(--text-body)" }}
                 >
-                  {p.score}
+                  {shared ? "" : p.score}
                 </span>
               </li>
             ))}

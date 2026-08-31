@@ -45,6 +45,7 @@ export const playlistSchema = z.enum([
   "kpop-classic",
 ]);
 export const difficultySchema = z.enum(["easy", "medium", "hard", "extreme"]);
+export const modeSchema = z.enum(["quiz", "heardle", "heardle-coop"]);
 
 export const createRoomSchema = z.object({ name: playerNameSchema });
 
@@ -65,6 +66,7 @@ export const sourceSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const configSchema = z.object({
+  mode: modeSchema,
   source: sourceSchema,
   difficulty: difficultySchema,
   roundCount: z.number().int().min(3).max(20),
@@ -133,4 +135,14 @@ export interface ServerToClientEvents {
   "room:error": (error: { code: string; message: string }) => void;
   /** The public room list, pushed whenever it changes. */
   "rooms:listing": (rooms: RoomListing[]) => void;
+  /**
+   * A Heardle guess that was wrong, sent only to whoever made it.
+   *
+   * This cannot ride along in the room snapshot: in the competitive mode a
+   * strike is private, and telling the room which option is out would hand
+   * everybody else an elimination they did not pay for. The shared mode does
+   * broadcast its strikes, in `RoundView.strikes`, because there they belong to
+   * the whole Room.
+   */
+  "round:strike": (payload: { index: number; choiceId: string }) => void;
 }

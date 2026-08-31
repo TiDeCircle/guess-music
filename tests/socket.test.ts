@@ -124,6 +124,7 @@ describe("socket wiring", () => {
     await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
 
     host.emit("room:config", {
+      mode: "quiz",
       source: { kind: "playlist", playlist: "kpop-now" },
       difficulty: "hard",
       roundCount: 5,
@@ -140,6 +141,7 @@ describe("socket wiring", () => {
     await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
 
     host.emit("room:config", {
+      mode: "quiz",
       source: { kind: "playlist", playlist: "thai-classic" },
       difficulty: "hard",
       roundCount: 3,
@@ -173,6 +175,7 @@ describe("socket wiring", () => {
     await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
 
     host.emit("room:config", {
+      mode: "quiz",
       source: { kind: "playlist", playlist: "thai-classic" },
       difficulty: "extreme",
       roundCount: 3,
@@ -191,6 +194,112 @@ describe("socket wiring", () => {
     expect(lobby.summary).toBeNull();
     // And the settings survive, so the host is adjusting rather than starting over.
     expect(lobby.config.difficulty).toBe("extreme");
+  });
+
+  describe("heardle", () => {
+    /**
+     * Which choice is the right one, read off the mocked pool.
+     *
+     * The fixture names each preview after its track id, so a test can tell a
+     * wrong option from a right one without waiting for the reveal. Nothing
+     * real leaks this way: Apple's preview URLs are opaque hashes with neither
+     * the id nor the title in them.
+     */
+    function wrongChoice(round: any): string {
+      const answerId = /\/([\w-]+)\.m4a$/.exec(round.previewUrl)![1];
+      const wrong = round.choices.find((c: any) => c.id !== answerId);
+      expect(wrong).toBeDefined();
+      return wrong.id;
+    }
+
+    /** Wait for one `round:strike`, or prove within `ms` that none arrived. */
+    function nextStrike(sock: Socket, ms = 1200) {
+      return new Promise<any | null>((resolve) => {
+        const timer = setTimeout(() => {
+          sock.off("round:strike", onStrike);
+          resolve(null);
+        }, ms);
+        const onStrike = (payload: any) => {
+          clearTimeout(timer);
+          sock.off("round:strike", onStrike);
+          resolve(payload);
+        };
+        sock.on("round:strike", onStrike);
+      });
+    }
+
+    /** Two clients in one room, playing the given mode, on an open round. */
+    async function playing(mode: "heardle" | "heardle-coop") {
+      const host = await client();
+      const guest = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
+
+      host.emit("room:config", {
+        mode,
+        source: { kind: "playlist", playlist: "thai-classic" },
+        difficulty: "medium",
+        roundCount: 3,
+      });
+      await nextState(host, (s) => s.config.mode === mode);
+
+      host.emit("match:start");
+      const loading = await nextState(host, (s) => s.phase === "loading" && s.round);
+      host.emit("round:ready", { index: loading.round.index });
+      guest.emit("round:ready", { index: loading.round.index });
+      const open = await nextState(host, (s) => s.phase === "playing");
+      return { host, guest, round: open.round };
+    }
+
+    it("tells the guesser their option is gone, and tells nobody else", async () => {
+      const { host, guest, round } = await playing("heardle");
+      const wrong = wrongChoice(round);
+
+      const mine = nextStrike(host);
+      const theirs = nextStrike(guest);
+      host.emit("round:answer", { index: round.index, choiceId: wrong });
+
+      expect(await mine).toEqual({ index: round.index, choiceId: wrong });
+      // Broadcasting it would hand the guest a free elimination.
+      expect(await theirs).toBeNull();
+    });
+
+    it("keeps the round open after a wrong guess, with the board untouched", async () => {
+      const { host, guest, round } = await playing("heardle");
+      const wrong = wrongChoice(round);
+
+      const strike = nextStrike(host);
+      host.emit("round:answer", { index: round.index, choiceId: wrong });
+      await strike;
+
+      const seen = await nextState(guest, (s) => s.phase === "playing");
+      expect(seen.round.strikes).toEqual([]);
+      expect(seen.answeredPlayerIds).toEqual([]);
+    });
+
+    it("shows a co-op strike to the whole room", async () => {
+      const { host, guest, round } = await playing("heardle-coop");
+      const wrong = wrongChoice(round);
+
+      host.emit("round:answer", { index: round.index, choiceId: wrong });
+
+      // Shared attempts are unplayable unless everyone can see what is gone.
+      const seen = await nextState(
+        guest,
+        (s) => s.phase === "playing" && s.round.strikes.length > 0,
+      );
+      expect(seen.round.strikes).toEqual([wrong]);
+    });
+
+    it("carries the stage ladder to the client", async () => {
+      const { round } = await playing("heardle");
+      expect(round.stagesMs.length).toBeGreaterThan(1);
+      const sorted = [...round.stagesMs].sort((a: number, b: number) => a - b);
+      expect(round.stagesMs).toEqual(sorted);
+      // The music runs to the last mark, then the silence keeps answers open.
+      expect(round.clipMs).toBe(round.stagesMs.at(-1));
+      expect(round.answerWindowMs).toBeGreaterThan(round.clipMs);
+    });
   });
 
   describe("room browser", () => {

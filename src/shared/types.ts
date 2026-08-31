@@ -40,6 +40,16 @@ export type PlaylistGroup = "thai" | "intl" | "kpop";
 
 export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
 
+/**
+ * The Game Modes a Room can play.
+ *
+ * `quiz` is one clip and one final answer. Both Heardle modes replace that with
+ * a clip that keeps growing and guesses that can be spent wrong — the split
+ * between them is social, not mechanical: `heardle` gives every player their own
+ * attempts and score, `heardle-coop` gives the whole Room one of each.
+ */
+export type GameModeId = "quiz" | "heardle" | "heardle-coop";
+
 /** One of the four options shown in a Round. */
 export type Choice = {
   id: string;
@@ -76,6 +86,7 @@ export type SongSource =
   | { kind: "artist"; artist: string };
 
 export type MatchConfig = {
+  mode: GameModeId;
   source: SongSource;
   difficulty: DifficultyId;
   roundCount: number;
@@ -102,6 +113,17 @@ export type RoundView = {
   deadlineAt: number;
   startAt: number;
   previewUrl: string;
+  /**
+   * Heardle: the ms marks where the score tier drops, last one being where the
+   * music stops. Empty in Quiz, which has a single tier and a linear bonus.
+   */
+  stagesMs: number[];
+  /**
+   * Options struck out for the whole Room by a wrong guess. Only a shared mode
+   * fills this — in a competitive one a strike is private to whoever spent it,
+   * and broadcasting it would hand everyone else a free elimination.
+   */
+  strikes: string[];
 };
 
 /** What everyone sees once the Round closes. */
@@ -150,6 +172,7 @@ export type MatchSummary = {
  */
 export type RoomListing = {
   code: string;
+  mode: GameModeId;
   playerCount: number;
   maxPlayers: number;
   phase: RoomPhase;

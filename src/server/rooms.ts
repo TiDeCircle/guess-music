@@ -13,9 +13,8 @@ import type {
 } from "@/shared/types";
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from "@/shared/difficulty";
 import { DEFAULT_PLAYLIST } from "@/data/seeds";
-import { scoreAnswer } from "@/shared/scoring";
 import { makeRng } from "@/shared/rng";
-import { quizMode, type RoundPlan } from "@/shared/modes";
+import { DEFAULT_MODE, MODES, type RoundPlan } from "@/shared/modes";
 import {
   MAX_PLAYERS,
   ROOM_CODE_ALPHABET,
@@ -51,6 +50,13 @@ const DEFAULT_ROUND_COUNT = 10;
 /** Answers from the last few Matches, avoided when picking new ones. */
 const RECENT_MATCH_MEMORY = 3;
 
+/**
+ * Who the wrong guesses belong to in a shared mode.
+ *
+ * Player ids are UUIDs, so this can never collide with one.
+ */
+const TEAM_KEY = "__team__";
+
 type ServerPlayer = {
   id: string;
   name: string;
@@ -77,6 +83,11 @@ type ActiveMatch = {
   startAt: number;
   deadlineAt: number;
   answers: Map<string, SubmittedAnswer>;
+  /**
+   * Wrong choiceIds spent on the current Round, keyed by player id — or by
+   * TEAM_KEY alone when the mode is shared.
+   */
+  wrong: Map<string, string[]>;
   ready: Set<string>;
 };
 
@@ -160,6 +171,7 @@ export class RoomStore {
       hostId: player.id,
       players: new Map([[player.id, player]]),
       config: {
+        mode: DEFAULT_MODE,
         source: { kind: "playlist", playlist: DEFAULT_PLAYLIST },
         difficulty: DEFAULT_DIFFICULTY,
         roundCount: DEFAULT_ROUND_COUNT,
@@ -335,6 +347,7 @@ export class RoomStore {
       if (playerCount === 0) continue;
       out.push({
         code: room.code,
+        mode: room.config.mode,
         playerCount,
         maxPlayers: MAX_PLAYERS,
         phase: room.phase,
@@ -366,7 +379,7 @@ export class RoomStore {
     const rng = makeRng(Date.now() ^ randomInt(2 ** 31));
     const pool = await buildPool(room.config.source, rng);
 
-    const rounds = quizMode.buildRounds({
+    const rounds = MODES[room.config.mode].buildRounds({
       pool,
       count: room.config.roundCount,
       difficulty: DIFFICULTIES[room.config.difficulty],
@@ -389,6 +402,7 @@ export class RoomStore {
       startAt: 0,
       deadlineAt: 0,
       answers: new Map(),
+      wrong: new Map(),
       ready: new Set(),
     };
 
@@ -412,6 +426,7 @@ export class RoomStore {
     this.clearTimer(room);
 
     match.answers.clear();
+    match.wrong.clear();
     match.ready.clear();
     match.startAt = 0;
     match.deadlineAt = 0;
@@ -459,41 +474,66 @@ export class RoomStore {
   }
 
   /**
-   * Records an answer. One per player per Round, final — changing your mind is
-   * not allowed, which is what makes the speed bonus mean anything.
+   * Records a guess and lets the Game Mode decide what it was worth.
+   *
+   * Nothing here knows what mode is running. It asks `judge` whether the guess
+   * ends the Round for whoever made it, and `shared` whether "whoever" means
+   * one player or the whole Room. Returns what happened so the caller can tell
+   * the guesser their option was struck out — in a competitive mode that is
+   * private, and broadcasting it would hand everyone else a free elimination.
    */
   submitAnswer(
     room: Room,
     playerId: string,
     index: number,
     choiceId: string,
-  ): void {
+  ): { correct: boolean; final: boolean } | null {
     const match = room.match;
-    if (!match || room.phase !== "playing") return;
-    if (index !== match.index) return;
-    if (match.answers.has(playerId)) return;
+    if (!match || room.phase !== "playing") return null;
+    if (index !== match.index) return null;
 
+    const mode = MODES[room.config.mode];
     const plan = match.rounds[match.index];
-    if (!plan) return;
-    if (!plan.choices.some((c) => c.id === choiceId)) return;
+    if (!plan) return null;
+    if (!plan.choices.some((c) => c.id === choiceId)) return null;
+
+    // In a shared mode the first final guess ends the Round for everybody, so
+    // one recorded answer means nobody may guess again.
+    const done = mode.shared ? match.answers.size > 0 : match.answers.has(playerId);
+    if (done) return null;
+
+    const key = mode.shared ? TEAM_KEY : playerId;
+    const wrongSoFar = match.wrong.get(key) ?? [];
+    // Tapping an option already struck out is a mis-tap, not a fresh attempt.
+    if (wrongSoFar.includes(choiceId)) return null;
 
     // Server clock, server arithmetic. The client's countdown is decoration.
     const elapsedMs = Date.now() - match.startAt;
-    const correct = choiceId === plan.answer.id;
-    const gained = scoreAnswer({
-      correct,
+    const { correct, gained, final } = mode.judge({
+      plan,
+      choiceId,
       elapsedMs,
-      windowMs: plan.answerWindowMs,
-      multiplier: plan.multiplier,
+      wrongSoFar,
     });
 
-    match.answers.set(playerId, { choiceId, elapsedMs, correct, gained });
+    if (!correct) match.wrong.set(key, [...wrongSoFar, choiceId]);
 
-    const player = room.players.get(playerId);
-    if (player) player.score += gained;
+    if (final) {
+      const record = { choiceId, elapsedMs, correct, gained };
+      // A shared mode scores the Room, not the tapper: everyone connected ends
+      // the Round with the same result and the same points.
+      const scored = mode.shared
+        ? [...room.players.values()].filter((p) => p.connected)
+        : [room.players.get(playerId)].filter((p) => p !== undefined);
+      for (const player of scored) {
+        match.answers.set(player.id, record);
+        player.score += gained;
+      }
+    }
 
     this.maybeAdvance(room);
     if (room.phase === "playing") this.events.onState(room);
+    return { correct, final };
   }
 
   /** Ends the Round early once nobody the room is waiting on is left. */
@@ -510,6 +550,12 @@ export class RoomStore {
     }
 
     if (room.phase !== "playing") return;
+    // One shared answer settles the Round, including for anyone who joined
+    // after it opened and so was never able to guess.
+    if (MODES[room.config.mode].shared && match.answers.size > 0) {
+      this.closeRound(room);
+      return;
+    }
     const active = [...room.players.values()].filter((p) => p.connected);
     if (active.length === 0) return;
     if (active.every((p) => match.answers.has(p.id))) this.closeRound(room);
@@ -620,6 +666,12 @@ export function toRoomState(room: Room): RoomState {
         choices: plan.choices,
         clipMs: plan.clipMs,
         answerWindowMs: plan.answerWindowMs,
+        stagesMs: plan.stagesMs,
+        // Only a shared mode's strikes are everyone's business; a competitive
+        // player's own strikes reach them alone, over their own socket.
+        strikes: MODES[room.config.mode].shared
+          ? (match.wrong.get(TEAM_KEY) ?? [])
+          : [],
         deadlineAt: match.deadlineAt,
         startAt: match.startAt,
         previewUrl: plan.answer.previewUrl,

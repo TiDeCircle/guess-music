@@ -99,6 +99,7 @@ export default function Page() {
           room={game.room}
           playerId={game.playerId}
           history={game.history}
+          strikes={game.strikes}
           serverNow={game.serverNow}
           onAnswer={game.answer}
         />

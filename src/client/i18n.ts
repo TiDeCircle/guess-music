@@ -62,6 +62,39 @@ export const STRINGS = {
     en: "Send this code to your friends",
   },
 
+  /* --- game modes and the three steps that set a match up --- */
+  gameMode: { th: "โหมดการเล่น", en: "Game mode" },
+  stepMode: { th: "โหมด", en: "Mode" },
+  stepSongs: { th: "เพลง", en: "Songs" },
+  stepSettings: { th: "ตั้งค่า", en: "Settings" },
+  next: { th: "ถัดไป", en: "Next" },
+
+  "mode.quiz": { th: "ทายเพลง", en: "Guess the song" },
+  "mode.quiz.hint": {
+    th: "ฟังคลิปสั้น ๆ แล้วเลือกคำตอบ ตอบได้ครั้งเดียว ใครไวกว่าได้แต้มมากกว่า",
+    en: "One clip, one answer. The faster you lock it in, the more it pays.",
+  },
+  "mode.heardle": { th: "Heardle แข่งกัน", en: "Heardle — head to head" },
+  "mode.heardle.hint": {
+    th: "เพลงยาวขึ้นเรื่อย ๆ แต้มลดลงเรื่อย ๆ ทายผิดได้ 2 ครั้ง แต่เสียแต้ม ต่างคนต่างแต้ม",
+    en: "The clip keeps growing and the points keep dropping. Two wrong guesses allowed, each one costs you. Everyone for themselves.",
+  },
+  "mode.heardle-coop": { th: "Heardle ช่วยกัน", en: "Heardle — co-op" },
+  "mode.heardle-coop.hint": {
+    th: "กติกาเดียวกัน แต่ทั้งห้องใช้สิทธิ์ทายร่วมกัน 2 ครั้ง และได้แต้มก้อนเดียวกันทุกคน",
+    en: "Same rules, but the room shares one pair of guesses — and everyone banks the same points.",
+  },
+
+  pointsNow: { th: "แต้มตอนนี้", en: "Worth now" },
+  guessesLeft: { th: "ทายผิดได้อีก", en: "Wrong guesses left" },
+  guessesLeftTeam: { th: "ทั้งห้องทายผิดได้อีก", en: "Wrong guesses left for the room" },
+  struckOut: { th: "ตัดออกแล้ว", en: "Ruled out" },
+  keepListening: { th: "ผิด — ฟังต่อแล้วลองใหม่", en: "Wrong — keep listening and try again" },
+  outOfGuesses: { th: "หมดสิทธิ์ทายแล้วรอบนี้", en: "Out of guesses this round" },
+  teamScore: { th: "คะแนนทีม", en: "Team score" },
+  teamName: { th: "ทั้งห้อง", en: "The room" },
+  coopWaiting: { th: "ใครก็ได้ในห้องกดตอบ", en: "Anyone in the room can answer" },
+
   playlist: { th: "เพลย์ลิสต์", en: "Playlist" },
   groupThai: { th: "เพลงไทย", en: "Thai" },
   groupIntl: { th: "เพลงสากล", en: "International" },

@@ -18,6 +18,15 @@ export type DifficultySpec = {
   /** Multiplies the whole round score, so harder levels are worth choosing. */
   multiplier: number;
   decoy: DecoyStrategy;
+  /**
+   * Heardle only: the ms marks where the score tier drops, in order, the last
+   * being where the music stops.
+   *
+   * Difficulty has to mean something in a mode with no fixed clip, and this is
+   * where it lands: a harder level does not shorten the round so much as shrink
+   * the window in which the top tier is still available.
+   */
+  heardleStages: number[];
 };
 
 /**
@@ -35,6 +44,7 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultySpec> = {
     answerWindowMs: 20_000,
     multiplier: 0.75,
     decoy: "different-artist",
+    heardleStages: [2_000, 4_000, 6_000, 9_000, 13_000, 18_000],
   },
   medium: {
     id: "medium",
@@ -42,6 +52,7 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultySpec> = {
     answerWindowMs: 15_000,
     multiplier: 1,
     decoy: "different-artist",
+    heardleStages: [1_000, 2_000, 4_000, 7_000, 11_000, 16_000],
   },
   hard: {
     id: "hard",
@@ -49,6 +60,7 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultySpec> = {
     answerWindowMs: 10_000,
     multiplier: 1.5,
     decoy: "mixed",
+    heardleStages: [1_000, 2_000, 3_000, 5_000, 8_000, 12_000],
   },
   extreme: {
     id: "extreme",
@@ -56,6 +68,7 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultySpec> = {
     answerWindowMs: 8_000,
     multiplier: 2,
     decoy: "same-artist",
+    heardleStages: [1_000, 2_000, 3_000, 4_000, 6_000, 8_000],
   },
 };
 

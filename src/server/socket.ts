@@ -172,12 +172,20 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       if (!ctx) return;
       const parsed = answerSchema.safeParse(payload);
       if (!parsed.success) return;
-      store.submitAnswer(
+      const outcome = store.submitAnswer(
         ctx.room,
         ctx.playerId,
         parsed.data.index,
         parsed.data.choiceId,
       );
+      // Heardle keeps the round open after a wrong guess, so the guesser has to
+      // learn immediately which option is gone — the reveal is far too late.
+      if (outcome && !outcome.correct) {
+        socket.emit("round:strike", {
+          index: parsed.data.index,
+          choiceId: parsed.data.choiceId,
+        });
+      }
     });
 
     socket.on("disconnect", () => {
