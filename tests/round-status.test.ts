@@ -3,6 +3,8 @@ import type { Player } from "@/shared/types";
 import {
   FINAL_STRETCH_MS,
   answeredSummary,
+  countInSeconds,
+  isCountIn,
   isFinalStretch,
 } from "@/client/roundStatus";
 
@@ -74,5 +76,46 @@ describe("answeredSummary", () => {
 
   it("survives an empty room", () => {
     expect(answeredSummary([], [], [], false)).toEqual({ done: 0, total: 0 });
+  });
+});
+
+describe("isCountIn", () => {
+  it("is on for the round that opens a match, before the clip", () => {
+    expect(isCountIn(0, 3_000, 0)).toBe(true);
+    expect(isCountIn(0, 3_000, 2_999)).toBe(true);
+  });
+
+  it("is off the instant the clip starts", () => {
+    expect(isCountIn(0, 3_000, 3_000)).toBe(false);
+    expect(isCountIn(0, 3_000, 9_000)).toBe(false);
+  });
+
+  // Every round after the first gets a beat, not a count. A number that flashed
+  // "2, 1" on the way past is noise, and a whole screen for it is worse.
+  it("is off for every round after the first", () => {
+    expect(isCountIn(1, 3_000, 0)).toBe(false);
+    expect(isCountIn(9, 3_000, 0)).toBe(false);
+  });
+});
+
+describe("countInSeconds", () => {
+  it("counts three, two, one", () => {
+    expect(countInSeconds(3_000, 0)).toBe(3);
+    expect(countInSeconds(3_000, 1_000)).toBe(2);
+    expect(countInSeconds(3_000, 2_000)).toBe(1);
+  });
+
+  // The clip lands on zero, so zero is a number this never shows: it would sit
+  // on screen for a whole second promising a start that already happened.
+  it("never shows a zero", () => {
+    expect(countInSeconds(3_000, 2_999)).toBe(1);
+    expect(countInSeconds(3_000, 3_000)).toBe(1);
+    expect(countInSeconds(3_000, 5_000)).toBe(1);
+  });
+
+  it("holds a whole number for a whole second", () => {
+    expect(countInSeconds(3_000, 1)).toBe(3);
+    expect(countInSeconds(3_000, 999)).toBe(3);
+    expect(countInSeconds(3_000, 1_001)).toBe(2);
   });
 });

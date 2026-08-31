@@ -7,6 +7,7 @@ import { Shell } from "@/client/components/Shell";
 import { HomeScreen } from "@/client/components/HomeScreen";
 import { LobbyScreen } from "@/client/components/LobbyScreen";
 import { PlayScreen } from "@/client/components/PlayScreen";
+import { CountdownScreen } from "@/client/components/CountdownScreen";
 import { RevealScreen } from "@/client/components/RevealScreen";
 import { FinishedScreen } from "@/client/components/FinishedScreen";
 
@@ -23,6 +24,8 @@ export default function Page() {
   const [starting, setStarting] = useState(false);
 
   const phase = game.room?.phase;
+  /** A Round is on screen in one form or another. */
+  const inRound = phase === "loading" || phase === "playing";
 
   // Starting a match is not instant. Clear the flag once the room has actually
   // left the lobby — and note that creating a room lands in `lobby` too, which
@@ -94,7 +97,17 @@ export default function Page() {
         />
       )}
 
-      {game.room?.round && (phase === "loading" || phase === "playing") && (
+      {/* The three seconds that open a Match get the screen to themselves —
+          see CountdownScreen. Every later Round opens with a short beat that
+          the play screen shows in place. */}
+      {game.room?.round && game.countingIn && (
+        <CountdownScreen
+          startAt={game.room.round.startAt}
+          serverNow={game.serverNow}
+        />
+      )}
+
+      {game.room?.round && inRound && !game.countingIn && (
         <PlayScreen
           room={game.room}
           playerId={game.playerId}

@@ -83,14 +83,6 @@ export function PlayScreen({
     heardleTierPoints(i, round.stagesMs.length, multiplier),
   );
 
-  /**
-   * In artist mode every option is by the same act, so the artist line carries
-   * no information — and worse, it leaks: a collaboration is credited under the
-   * lead artist's id but displayed as "X & Y", which makes that one option
-   * visibly different from the rest.
-   */
-  const showArtist = room.config.source.kind !== "artist";
-
   return (
     // Keyed by round so the entrance re-fires each time, rather than only on
     // the first mount of the match.
@@ -112,8 +104,6 @@ export function PlayScreen({
               audibleMs={round.stagesMs.length > 0 ? round.stagesMs[level] : undefined}
               serverNow={serverNow}
               idle={loading}
-              // Only the Round that opens the Match is counted in.
-              countIn={round.index === 0}
             />
           </div>
 
@@ -194,7 +184,7 @@ export function PlayScreen({
                     // beat to fall back, because that is the screen answering.
                     // Symmetric timing here made the whole grid feel like it
                     // changed by itself.
-                    className={`group flex min-h-32 flex-col justify-between p-3 text-left transition-colors md:min-h-44 md:p-4 ${
+                    className={`group flex min-h-32 flex-col justify-center p-3 text-left transition-colors md:min-h-44 md:p-4 ${
                       isPicked
                         ? "bg-ink text-paper duration-[var(--duration-press)]"
                         : picked !== null
@@ -205,15 +195,6 @@ export function PlayScreen({
                     <span className="text-[0.9375rem] font-medium break-words md:text-[length:var(--text-body)]">
                       {choice.title}
                     </span>
-                    {showArtist && (
-                      <span
-                        className={`label mt-3 transition-colors md:mt-4 ${
-                          isPicked ? "text-grey-300" : "text-grey-500"
-                        }`}
-                      >
-                        {choice.artist}
-                      </span>
-                    )}
                   </button>
                 );
               })}

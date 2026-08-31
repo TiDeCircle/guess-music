@@ -59,3 +59,26 @@ export function answeredSummary(
     total: present.length,
   };
 }
+
+/**
+ * Whether the Match is being counted in.
+ *
+ * Only the Round that opens a Match gets a count: it is the one moment where
+ * nobody is watching yet, because the room has been picking playlists and
+ * somebody is still finding their headphones. Every Round after it gets a short
+ * beat instead, and a number that flashed past on the way there would be noise.
+ */
+export function isCountIn(roundIndex: number, startAt: number, now: number): boolean {
+  return roundIndex === 0 && now < startAt;
+}
+
+/**
+ * The number on the count-in screen.
+ *
+ * Floored at one rather than allowed to reach zero: the clip starts on zero, so
+ * a zero would sit there for a whole second promising a start that has already
+ * happened.
+ */
+export function countInSeconds(startAt: number, now: number): number {
+  return Math.max(Math.ceil((startAt - now) / 1000), 1);
+}

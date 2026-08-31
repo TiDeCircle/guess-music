@@ -52,10 +52,18 @@ export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
 export type GameModeId = "quiz" | "heardle" | "heardle-coop";
 
 /** One of the four options shown in a Round. */
+/**
+ * One option on the Quiz board.
+ *
+ * A title and nothing else. The artist used to ride along and be printed under
+ * the title, which quietly decided most rounds: on easy and medium every decoy
+ * is by a different act, so recognising a voice picked the answer out without
+ * knowing the song — in a game whose whole question is the song. It is not on
+ * the wire at all now, so it cannot be read out of the network tab either.
+ */
 export type Choice = {
   id: string;
   title: string;
-  artist: string;
 };
 
 export type Player = {

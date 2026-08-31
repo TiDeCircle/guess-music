@@ -69,28 +69,33 @@ describe("quiz rounds", () => {
   });
 
   describe("decoy strategy", () => {
-    const sameArtistDecoys = (rounds: ReturnType<typeof build>) =>
-      rounds.map(
+    // The choices no longer carry an artist — that was handing the answer to
+    // anyone who recognised the voice — so who sang what is resolved back
+    // through the pool the round was built from.
+    const sameArtistDecoys = (rounds: ReturnType<typeof build>, tracks: Track[]) => {
+      const artistOf = new Map(tracks.map((t) => [t.id, t.artist]));
+      return rounds.map(
         (r) =>
           r.choices.filter(
-            (c) => c.id !== r.answer.id && c.artist === r.answer.artist,
+            (c) => c.id !== r.answer.id && artistOf.get(c.id) === r.answer.artist,
           ).length,
       );
+    };
 
     it("keeps every wrong option by a different artist on easy", () => {
-      for (const n of sameArtistDecoys(build("easy", pool(12, 6)))) {
+      for (const n of sameArtistDecoys(build("easy", pool(12, 6)), pool(12, 6))) {
         expect(n).toBe(0);
       }
     });
 
     it("puts two same-artist decoys in every extreme round", () => {
-      for (const n of sameArtistDecoys(build("extreme", pool(12, 6)))) {
+      for (const n of sameArtistDecoys(build("extreme", pool(12, 6)), pool(12, 6))) {
         expect(n).toBe(2);
       }
     });
 
     it("puts exactly one same-artist decoy in a hard round", () => {
-      for (const n of sameArtistDecoys(build("hard", pool(12, 6)))) {
+      for (const n of sameArtistDecoys(build("hard", pool(12, 6)), pool(12, 6))) {
         expect(n).toBe(1);
       }
     });
@@ -123,8 +128,40 @@ describe("quiz rounds", () => {
     // A duplicate release: new id, identical title and artist.
     tracks.push({ ...tracks[0]!, id: "dupe" });
     for (const r of build("medium", tracks)) {
-      const labels = r.choices.map((c) => `${c.title}|${c.artist}`.toLowerCase());
-      expect(new Set(labels).size).toBe(CHOICE_COUNT);
+      const titles = r.choices.map((c) => c.title.trim().toLowerCase());
+      expect(new Set(titles).size).toBe(CHOICE_COUNT);
+    }
+  });
+
+  /**
+   * The tile shows a title and nothing else, so two options that share a title
+   * are two identical tiles — one of which is scored wrong. Before the artist
+   * came off they were told apart by the line underneath; now nothing does, and
+   * the round has to refuse to build them in the first place.
+   */
+  it("never offers the same title twice, even by different artists", () => {
+    // Every act covers every song, so a collision check that compares the
+    // artist as well as the title has a dozen ways to pair two identical tiles
+    // in one round, and a title-only one has none. Six distinct titles is more
+    // than the four a round needs, so this stays buildable either way — it is
+    // the labels that separate a pass from a fail, not the round count.
+    const covers = pool(12, 6).map((t, i) => ({
+      ...t,
+      title: `Song ${i % 6}`,
+    }));
+    const rounds = build("medium", covers);
+    expect(rounds.length).toBeGreaterThan(0);
+    for (const r of rounds) {
+      const titles = r.choices.map((c) => c.title.trim().toLowerCase());
+      expect(new Set(titles).size).toBe(CHOICE_COUNT);
+    }
+  });
+
+  it("puts no artist on the wire with the options at all", () => {
+    for (const r of build("medium", pool(12, 6))) {
+      for (const c of r.choices) {
+        expect(Object.keys(c).sort()).toEqual(["id", "title"]);
+      }
     }
   });
 

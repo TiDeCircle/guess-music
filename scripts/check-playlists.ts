@@ -31,10 +31,13 @@ async function main() {
         difficulty: DIFFICULTIES.extreme,
         rng,
       });
+      // The choices carry a title and nothing else now, so who sang a decoy is
+      // looked up in the pool it came from.
+      const artistOf = new Map(pool.map((t) => [t.id, t.artist]));
       const fullDecoys = rounds.filter(
         (r) =>
           r.choices.filter(
-            (c) => c.id !== r.answer.id && c.artist === r.answer.artist,
+            (c) => c.id !== r.answer.id && artistOf.get(c.id) === r.answer.artist,
           ).length === 2,
       ).length;
 

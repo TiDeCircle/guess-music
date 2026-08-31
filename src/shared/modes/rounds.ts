@@ -16,17 +16,21 @@ const SAME_ARTIST_TARGET: Record<DecoyStrategy, number> = {
 const toChoice = (t: Track): Choice => ({
   id: t.id,
   title: t.title,
-  artist: t.artist,
 });
 
 /**
- * Two tracks collide as choices if they'd read identically on screen. Different
- * iTunes ids for the same song (single vs album release) are common, and
- * showing the same title twice makes a round unanswerable.
+ * Two tracks collide as choices if they'd read identically on screen, which
+ * since the artist came off the tile means: same title. Different iTunes ids
+ * for the same song (single vs album release) are common, and so are covers —
+ * either way two tiles reading the same thing with one of them scored wrong is
+ * a round nobody can answer.
+ *
+ * This deliberately rejects more pairs than it used to. A cover by a different
+ * act was previously allowed alongside the original because the artist line
+ * told them apart; nothing tells them apart now.
  */
 const sameLabel = (a: Track, b: Track) =>
-  a.title.trim().toLowerCase() === b.title.trim().toLowerCase() &&
-  a.artist.trim().toLowerCase() === b.artist.trim().toLowerCase();
+  a.title.trim().toLowerCase() === b.title.trim().toLowerCase();
 
 /**
  * Build the wrong options for one Round.

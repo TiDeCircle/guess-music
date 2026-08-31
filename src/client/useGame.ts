@@ -13,6 +13,7 @@ import type {
 import { MODES, unlockedMs } from "@/shared/modes";
 import { AudioEngine } from "./audio";
 import { SoundEngine, outcomeCue } from "./sfx";
+import { isCountIn } from "./roundStatus";
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -304,6 +305,29 @@ export function useGame() {
     if (phase === "finished") sfxRef.current?.play("finish");
   }, [phase]);
 
+  /**
+   * Whether the Match is being counted in right now.
+   *
+   * Lives here rather than in a component because it decides which screen the
+   * page shows, and because the moment it ends is a server time this hook
+   * already knows how to read.
+   */
+  const [countingIn, setCountingIn] = useState(false);
+  useEffect(() => {
+    if (phase !== "playing" || !round) {
+      setCountingIn(false);
+      return;
+    }
+    const now = Date.now() + clockOffsetRef.current;
+    if (!isCountIn(round.index, round.startAt, now)) {
+      setCountingIn(false);
+      return;
+    }
+    setCountingIn(true);
+    const done = setTimeout(() => setCountingIn(false), round.startAt - now);
+    return () => clearTimeout(done);
+  }, [phase, round]);
+
   useEffect(() => {
     const audio = audioRef.current;
     const socket = socketRef.current;
@@ -538,6 +562,7 @@ export function useGame() {
     volumeStep,
     setVolumeStep,
     history,
+    countingIn,
     wrongGuesses,
     myLevel,
     audibleMs,
