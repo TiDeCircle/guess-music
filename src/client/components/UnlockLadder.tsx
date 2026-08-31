@@ -46,7 +46,10 @@ export function UnlockLadder({
         <span className="flex items-baseline gap-2">
           <span className="label text-grey-500">{t("pointsNow")}</span>
           <span
-            className="numeric font-semibold"
+            // Keyed by value so the figure is replaced rather than mutated:
+            // this is what the level just cost, and it should land, not blink.
+            key={nowPoints}
+            className="numeric tick font-semibold"
             style={{ fontSize: "var(--text-title)" }}
           >
             {nowPoints}
@@ -57,9 +60,11 @@ export function UnlockLadder({
       <div className="mt-2 flex h-16 items-end gap-px" aria-hidden>
         {stagesMs.map((ms, i) => (
           <span
-            key={ms}
+            // The block being stood on is re-keyed when the level moves, so the
+            // step that was just bought is the only one that animates.
+            key={i === level ? `${ms}-${level}` : ms}
             className={`flex-1 transition-colors ${
-              i === level ? "bg-accent" : i < level ? "bg-grey-300" : "bg-grey-100"
+              i === level ? "step-up bg-accent" : i < level ? "bg-grey-300" : "bg-grey-100"
             }`}
             style={{ height: `${((i + 1) / stagesMs.length) * 100}%` }}
           />

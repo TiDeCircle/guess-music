@@ -171,7 +171,9 @@ function WindowBar({
   idle?: boolean;
   label: string;
 }) {
-  const played = idle ? 0 : Math.min(elapsedMs / windowMs, 1) * 100;
+  // A fraction, not a percentage: this one is spent as a transform, because it
+  // is the only value here that changes every frame.
+  const played = idle ? 0 : Math.min(elapsedMs / windowMs, 1);
   const music = Math.min(audibleMs / windowMs, 1) * 100;
 
   return (
@@ -179,7 +181,15 @@ function WindowBar({
       {/* Where the music reaches, so the quiet stretch reads as part of the
           round rather than a preview that died. */}
       <span className="absolute inset-y-0 left-0 bg-grey-300" style={{ width: `${music}%` }} />
-      <span className="absolute inset-y-0 left-0 bg-ink" style={{ width: `${played}%` }} />
+      {/* The clock hand. Full width and squashed from the left rather than
+          grown by width: this is redrawn on every animation frame for the whole
+          round, and width would cost a layout pass each time where a transform
+          costs none. Its two neighbours move only when a level is bought, so
+          they stay on the simpler property. */}
+      <span
+        className="absolute inset-y-0 left-0 w-full origin-left bg-ink"
+        style={{ transform: `scaleX(${played})`, willChange: "transform" }}
+      />
       <span
         className="absolute inset-y-0 w-px bg-accent"
         style={{ left: `${music}%` }}

@@ -38,9 +38,11 @@ export function PlayerStrip({
         {ordered.map((p) => {
           const done = loading ? ready.has(p.id) : answered.has(p.id);
           return (
+            // Filled rather than blinked: a cell that fills reads as another
+            // person doing something, and a cell that snaps reads as a glitch.
             <div
               key={p.id}
-              className={`flex items-baseline justify-between gap-2 p-3 ${
+              className={`flex items-baseline justify-between gap-2 p-3 transition-colors ${
                 done ? "bg-ink text-paper" : "bg-paper text-ink"
               }`}
             >

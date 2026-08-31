@@ -29,10 +29,11 @@ export function RoundDots({
           const outcome = history[i];
           const isCurrent = i === current;
           return (
+            // The marker moves along the row rather than jumping between slots.
             <span
               key={i}
               title={`${t("round")} ${i + 1}`}
-              className={`relative h-6 flex-1 ${
+              className={`relative h-6 flex-1 transition-colors ${
                 isCurrent
                   ? "bg-accent"
                   : outcome === "correct"

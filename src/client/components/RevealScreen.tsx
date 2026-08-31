@@ -24,8 +24,8 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
     : [...reveal.results].sort((a, b) => b.totalScore - a.totalScore);
 
   return (
-    <div className="grid gap-10 md:grid-cols-12 md:gap-8">
-      <section className="md:col-span-6">
+    <div key={reveal.index} className="grid gap-10 md:grid-cols-12 md:gap-8">
+      <section className="enter md:col-span-6">
         <FieldLabel>{t("theAnswer")}</FieldLabel>
         <div className="mt-4 flex items-start gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -48,7 +48,9 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
         </div>
       </section>
 
-      <section className="md:col-span-6">
+      {/* One step behind the answer: the song is what everyone looks at first,
+          and the scores mean more once you know what the song was. */}
+      <section className="enter md:col-span-6" style={{ animationDelay: "60ms" }}>
         <FieldLabel>{shared ? t("teamScore") : t("standings")}</FieldLabel>
         <ul className="mt-2">
           {rows.map((r) => {

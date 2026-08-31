@@ -74,7 +74,9 @@ export function PlayScreen({
   const showArtist = room.config.source.kind !== "artist";
 
   return (
-    <div className="flex flex-col gap-8">
+    // Keyed by round so the entrance re-fires each time, rather than only on
+    // the first mount of the match.
+    <div key={round.index} className="enter flex flex-col gap-8">
       <div className="grid gap-8 md:grid-cols-12">
         <section className="md:col-span-4">
           <FieldLabel>
@@ -165,10 +167,19 @@ export function PlayScreen({
                     // When both were solid ink, the tile under a cursor left
                     // over from the previous round looked exactly like an answer
                     // this player had already committed to.
+                    //
+                    // Timing is deliberately lopsided. The tile you chose
+                    // confirms at press speed, because that is your own hand
+                    // landing; the three you did not choose take the slower
+                    // beat to fall back, because that is the screen answering.
+                    // Symmetric timing here made the whole grid feel like it
+                    // changed by itself.
                     className={`group flex min-h-32 flex-col justify-between p-3 text-left transition-colors md:min-h-44 md:p-4 ${
                       isPicked
-                        ? "bg-ink text-paper"
-                        : "bg-paper text-ink enabled:hover:bg-grey-100 disabled:text-grey-500"
+                        ? "bg-ink text-paper duration-[var(--duration-press)]"
+                        : picked !== null
+                          ? "bg-grey-100 text-grey-500 duration-[var(--duration-enter)]"
+                          : "bg-paper text-ink enabled:hover:bg-grey-100 disabled:text-grey-500"
                     }`}
                   >
                     <span className="text-[0.9375rem] font-medium break-words md:text-[length:var(--text-body)]">
@@ -176,7 +187,7 @@ export function PlayScreen({
                     </span>
                     {showArtist && (
                       <span
-                        className={`label mt-3 md:mt-4 ${
+                        className={`label mt-3 transition-colors md:mt-4 ${
                           isPicked ? "text-grey-300" : "text-grey-500"
                         }`}
                       >
