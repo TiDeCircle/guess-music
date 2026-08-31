@@ -38,6 +38,7 @@ export const HITS_TRACK_IDS: readonly string[] = [
   "1872668608", // guncharlie — ไม่ได้ลืมแค่ไม่ได้เจอ (Flashback)
   "1793000560", // HANGMAN — รักเธอหัวทิ่มบ่อ
   "1861524534", // Ink Waruntorn — สักวันฉันจะหายดี
+  "6801558655", // Ink Waruntorn — ผลข้างเคียง (Love Effects) [feat. BILLKIN]
   "6764785899", // IRONBOY — Baddie (feat. Justmine JMNK)
   "1822527868", // JayQ — ฝากไว้ให้ Kiss (feat. BLVCKHEART)
   "1850899424", // Jeff Satur — ของขวัญปีใหม่ (Golden Night)
@@ -52,7 +53,6 @@ export const HITS_TRACK_IDS: readonly string[] = [
   "1792750384", // Loso — คืนจันทร์
   "1792755247", // Loso — อะไรก็ยอม
   "1792748152", // Loso — ไม่คิดนอกใจ
-  "1877706389", // LUMMUN — ผลข้างเคียง (feat. WESTSIDE2002)
   "1862841417", // LUMMUN — ใจบาง Remix
   "1870748665", // Maiyarap — RAIN ZONE (feat. Z9)
   "1738257931", // Malcolm Todd — Earrings
