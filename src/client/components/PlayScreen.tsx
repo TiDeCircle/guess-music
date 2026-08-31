@@ -260,7 +260,7 @@ export function PlayScreen({
                     // beat to fall back, because that is the screen answering.
                     // Symmetric timing here made the whole grid feel like it
                     // changed by itself.
-                    className={`group flex min-h-32 flex-col justify-between gap-3 p-3 text-left transition-colors md:min-h-44 md:p-4 ${
+                    className={`group flex min-h-32 flex-col gap-2 p-3 text-left transition-colors md:min-h-44 md:p-4 ${
                       isPicked
                         ? "bg-ink text-paper duration-[var(--duration-press)]"
                         : picked !== null
@@ -279,12 +279,18 @@ export function PlayScreen({
                     >
                       {i + 1}
                     </span>
-                    {/* Between two of the design's four sizes rather than a
-                        fifth one: body on a phone, the title size on a wide
-                        screen, and nothing in between that is not one of them
+                    {/* Centred in whatever the number leaves, not pinned to
+                        the far edge of it. Pushed apart, a short title and its
+                        numeral sat at opposite ends of a very tall box with a
+                        hole between them, which is what made a bigger tile read
+                        as an emptier one.
+
+                        The size is between two of the design's four rather than
+                        a fifth one: body on a phone, the title size on a wide
+                        screen, and nothing in between that is not one of those
                         interpolated. */}
                     <span
-                      className="font-medium text-pretty break-words"
+                      className="flex flex-1 items-center font-medium text-pretty break-words"
                       style={{
                         fontSize:
                           "clamp(var(--text-body), 2.2vw, var(--text-title))",

@@ -4,7 +4,6 @@ import type { RoomState } from "@/shared/types";
 import { MODES } from "@/shared/modes";
 import { useLang } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
-import { VinylRecord } from "./VinylRecord";
 
 /**
  * The moment the whole Lockstep design exists for: every player finds out at
@@ -29,13 +28,14 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
       <section className="enter md:col-span-6">
         <FieldLabel>{t("theAnswer")}</FieldLabel>
         <div className="mt-4 flex items-start gap-6">
-          {/* The record has been turning through the round with nothing on its
-              label, because the label is the answer. This is the moment it is
-              allowed to have one. Still, not spinning — the clip has stopped,
-              and the disc says so. */}
-          <div className="h-28 w-28 shrink-0 md:h-40 md:w-40">
-            <VinylRecord spinning={false} artworkUrl={reveal.track.artworkUrl} />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={reveal.track.artworkUrl}
+            alt=""
+            width={160}
+            height={160}
+            className="h-28 w-28 shrink-0 border border-ink object-cover md:h-40 md:w-40"
+          />
           <div>
             <h2
               className="font-bold leading-[1.05] tracking-[-0.02em]"
