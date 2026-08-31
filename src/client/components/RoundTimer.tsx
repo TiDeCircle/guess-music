@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/client/i18n";
+import { isFinalStretch } from "@/client/roundStatus";
 
 /**
  * The Round clock.
@@ -64,6 +65,8 @@ export function RoundTimer({
   const continuous = audibleMs !== undefined;
   const audible = audibleMs ?? clipMs;
   const playingMusic = !idle && elapsedMs < audible;
+  const remainingMs = windowMs - elapsedMs;
+  const urgent = isFinalStretch(remainingMs, Boolean(idle));
 
   return (
     <div>
@@ -86,15 +89,30 @@ export function RoundTimer({
       )}
 
       <div className="mt-3 flex items-baseline justify-between">
-        <span className="label text-grey-500">
+        <span className="label flex items-center gap-2 text-grey-500">
+          {/* Beating means there is sound coming out; a flat grey square means
+              there is not. Saying it in words alone left the quiet stretch and
+              the playing stretch looking identical from across a table. */}
+          <span
+            aria-hidden
+            className={`inline-block h-2 w-2 shrink-0 ${
+              playingMusic ? "beat bg-accent" : "bg-grey-300"
+            }`}
+          />
           {idle
             ? t("loadingAudio")
             : playingMusic
               ? t("musicPlaying")
               : t("silence")}
         </span>
+        {/* The last few seconds are the most "now" thing on the screen, and red
+            is what this design reserves for exactly that. The number changes
+            colour rather than size, because a countdown that grows shifts the
+            whole row it sits in. */}
         <span
-          className="numeric font-semibold"
+          className={`numeric font-semibold transition-colors ${
+            urgent ? "text-accent" : ""
+          }`}
           style={{ fontSize: "var(--text-title)" }}
           aria-live="off"
         >

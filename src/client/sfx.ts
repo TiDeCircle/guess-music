@@ -21,6 +21,8 @@
  * at zero loses nothing.
  */
 
+import { prefersReducedMotion } from "./motionPrefs";
+
 /** A cue is one or more short tones scheduled against the cue's own start. */
 export type Tone = {
   hz: number;
@@ -105,21 +107,6 @@ export function cuePeakGain(cue: Cue): number {
   return CUES[cue].reduce((peak, t) => Math.max(peak, t.gain), 0);
 }
 
-/**
- * Sound sensitivity has no media query of its own, so this borrows the one
- * that is closest in spirit: someone who has asked the interface to stop moving
- * has not asked it to start chirping. It is read at play time rather than
- * cached, so changing the system setting mid-match takes effect immediately.
- */
-function prefersReducedMotion(): boolean {
-  try {
-    return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  } catch {
-    // Blocked or unimplemented; play the cue rather than going silent.
-    return false;
-  }
-}
-
 export class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -166,6 +153,9 @@ export class SoundEngine {
 
   play(cue: Cue): void {
     if (this.volume === 0) return;
+    // Sound sensitivity has no media query of its own, so this borrows the one
+    // closest in spirit: someone who asked the interface to stop moving did not
+    // ask it to start chirping.
     if (prefersReducedMotion()) return;
     const ctx = this.ctx;
     const master = this.master;

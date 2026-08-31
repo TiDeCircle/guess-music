@@ -50,6 +50,9 @@
   --duration-enter: 240ms;   /* a screen or a panel arriving */
   --duration-swap: 180ms;    /* stepping sideways between two panels */
   --duration-hero: 420ms;    /* the home screen's opening statement, alone */
+  --duration-beat: 640ms;    /* one pulse of the mark that says sound is on */
+  --duration-sweep: 520ms;   /* a cell being marked as somebody's answer lands */
+  --duration-flip: 320ms;    /* a player moving past another in the standings */
 
   --default-transition-duration: var(--duration-state);
   --default-transition-timing-function: var(--ease-out);
@@ -350,4 +353,68 @@ body {
    be the noisiest thing on a screen that already has a clock running. */
 .tick {
   animation: tick var(--duration-state) var(--ease-out);
+}
+
+/**
+ * Three signals the play screen had the data for and drew as if nothing were
+ * happening: sound is on, somebody just answered, somebody just moved.
+ */
+
+/**
+ * The mark next to "music playing".
+ *
+ * Not tied to the audio — nothing here analyses the waveform, and pretending to
+ * would mean routing the clip through Web Audio and putting the iOS unlock at
+ * risk for a decoration. It is a recording light: a steady beat that means
+ * sound is happening, and a flat grey square the instant it stops. The
+ * difference between beating and still is the entire signal, which is why the
+ * silent state is a different shape of nothing rather than a slower beat.
+ *
+ * `ease-in-out` is the built-in on purpose. Every other curve in this file is a
+ * strong one because it is carrying something that enters or settles; this one
+ * is continuous, and a strong curve on a loop reads as a blink rather than a
+ * breath.
+ *
+ * Reduced motion collapses this to a single instant iteration, which lands on
+ * the 100% frame — a solid mark, present but still.
+ */
+@keyframes beat {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+}
+
+.beat {
+  animation: beat var(--duration-beat) ease-in-out infinite;
+}
+
+/**
+ * A cell being claimed.
+ *
+ * The colour change already said "answered"; this says "just now". It is an
+ * absolutely positioned child rather than anything applied to the cell itself,
+ * because the strip draws its dividing lines as the container's own background
+ * and a cell that moves opens a black gash where the gap was — a child inside
+ * the cell can move as much as it likes.
+ *
+ * It ends off the right edge, so reduced motion collapsing it to nothing leaves
+ * it invisible rather than parked across somebody's name.
+ */
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+.sweep {
+  animation: sweep var(--duration-sweep) var(--ease-out) forwards;
 }

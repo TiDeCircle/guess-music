@@ -1,13 +1,22 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { RoomState } from "@/shared/types";
 import { useLang } from "@/client/i18n";
+import { answeredSummary } from "@/client/roundStatus";
+import { prefersReducedMotion } from "@/client/motionPrefs";
 import { FieldLabel } from "./Shell";
 
 /** Keys for the empty cells needed to complete a row of `columns`. */
 function blanks(count: number, columns: number): string[] {
   const missing = (columns - (count % columns)) % columns;
   return Array.from({ length: missing }, (_, i) => `blank-${columns}-${i}`);
+}
+
+/** Read one of the motion tokens, so script and stylesheet stay in step. */
+function token(el: Element, name: string, fallback: string): string {
+  const value = getComputedStyle(el).getPropertyValue(name).trim();
+  return value === "" ? fallback : value;
 }
 
 /**
@@ -17,6 +26,13 @@ function blanks(count: number, columns: number): string[] {
  * like a race — without it a player stares at four options with no sense that
  * anyone else is there. What they picked stays hidden until the reveal; only
  * that they have picked is shown.
+ *
+ * Three things were already true here and drawn as though they were not. How
+ * many people the room is still waiting on was a wall of cells you had to count
+ * yourself. Somebody answering changed a colour but never said *just now*. And
+ * the strip is sorted by score, so people really do overtake each other — the
+ * rows simply swapped between frames, which is a thing you can miss entirely
+ * while looking straight at it.
  */
 export function PlayerStrip({
   room,
@@ -30,11 +46,108 @@ export function PlayerStrip({
   const ready = new Set(room.readyPlayerIds);
   const loading = room.phase === "loading";
   const ordered = [...room.players].sort((a, b) => b.score - a.score);
+  const { done: doneCount, total } = answeredSummary(
+    room.players,
+    room.answeredPlayerIds,
+    room.readyPlayerIds,
+    loading,
+  );
+
+  // ------------------------------------------------------------ just answered
+
+  const doneIds = loading ? room.readyPlayerIds : room.answeredPlayerIds;
+  // Sorted so the same set in a different order does not read as a change.
+  const doneKey = [...doneIds].sort().join(" ");
+  const seenRef = useRef(new Set<string>());
+  const [justDone, setJustDone] = useState<readonly string[]>([]);
+
+  useEffect(() => {
+    const now = new Set(doneIds);
+    const fresh = [...now].filter((id) => !seenRef.current.has(id));
+    seenRef.current = now;
+    if (fresh.length > 0) setJustDone(fresh);
+    // Keyed on the membership rather than the array, which is rebuilt on every
+    // broadcast whether or not anyone answered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doneKey]);
+
+  // ------------------------------------------------------------- overtaking
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const seatsRef = useRef(new Map<string, DOMRect>());
+  const flyingRef = useRef(false);
+  const [flying, setFlying] = useState(false);
+
+  // No dependency list on purpose: this measures after every render, which is
+  // the only way to catch a reorder the frame it happens.
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    // getBoundingClientRect reports the animated position, so measuring during
+    // a flight would bake that offset in as the cell's resting place. A reorder
+    // that lands mid-flight simply goes un-animated.
+    if (flyingRef.current) return;
+
+    const seats = new Map<string, DOMRect>();
+    const moved: Array<[HTMLElement, number, number]> = [];
+    for (const cell of grid.querySelectorAll<HTMLElement>("[data-player]")) {
+      const id = cell.dataset.player;
+      if (!id) continue;
+      const now = cell.getBoundingClientRect();
+      seats.set(id, now);
+      const before = seatsRef.current.get(id);
+      if (!before) continue;
+      const dx = before.left - now.left;
+      const dy = before.top - now.top;
+      // Sub-pixel drift from a reflow is not an overtake.
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      moved.push([cell, dx, dy]);
+    }
+    seatsRef.current = seats;
+    if (moved.length === 0) return;
+    // The Web Animations API does not consult the media query the way CSS
+    // does, so this is the only thing standing between a reduced-motion player
+    // and a screen full of sliding cells.
+    if (prefersReducedMotion()) return;
+
+    flyingRef.current = true;
+    setFlying(true);
+    let outstanding = moved.length;
+    const settle = () => {
+      if (--outstanding > 0) return;
+      flyingRef.current = false;
+      setFlying(false);
+    };
+
+    const duration = parseFloat(token(grid, "--duration-flip", "320ms"));
+    const easing = token(grid, "--ease-out", "cubic-bezier(0.2, 0, 0, 1)");
+    for (const [cell, dx, dy] of moved) {
+      cell
+        .animate(
+          [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+          { duration, easing },
+        )
+        .addEventListener("finish", settle);
+    }
+  });
 
   return (
     <section>
-      <FieldLabel>{t("players")}</FieldLabel>
-      <div className="mt-2 grid grid-cols-2 gap-px bg-ink sm:grid-cols-4">
+      {/* How many the room is still waiting on, rather than eight cells to
+          count. */}
+      <FieldLabel>
+        {t("players")} · {doneCount}/{total}
+      </FieldLabel>
+      <div
+        ref={gridRef}
+        // The dividing lines are the container's own background, which a cell
+        // in flight would otherwise be sliding across. Dropping them to paper
+        // for the length of the flight lets the grid dissolve and reform around
+        // the move instead of framing it in black.
+        className={`mt-2 grid grid-cols-2 gap-px transition-colors sm:grid-cols-4 ${
+          flying ? "bg-paper" : "bg-ink"
+        }`}
+      >
         {ordered.map((p) => {
           const done = loading ? ready.has(p.id) : answered.has(p.id);
           return (
@@ -42,25 +155,37 @@ export function PlayerStrip({
             // person doing something, and a cell that snaps reads as a glitch.
             <div
               key={p.id}
-              className={`flex items-baseline justify-between gap-2 p-3 transition-colors ${
+              data-player={p.id}
+              className={`relative flex items-baseline justify-between gap-2 overflow-hidden p-3 transition-colors ${
                 done ? "bg-ink text-paper" : "bg-paper text-ink"
               }`}
             >
+              {/* The colour already said "answered"; this says "just now", and
+                  only once. It sits under the name rather than over it, which
+                  is what the positioned siblings below are for. */}
+              {justDone.includes(p.id) && (
+                <span
+                  aria-hidden
+                  onAnimationEnd={() =>
+                    setJustDone((ids) => ids.filter((id) => id !== p.id))
+                  }
+                  className="sweep pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-accent"
+                />
+              )}
               <span
-                className={`truncate ${p.connected ? "" : "line-through opacity-50"}`}
+                className={`relative truncate ${p.connected ? "" : "line-through opacity-50"}`}
                 style={{ fontSize: "var(--text-body)" }}
               >
                 {p.name}
                 {p.id === playerId ? ` · ${t("you")}` : ""}
               </span>
-              <span className="numeric label shrink-0">{p.score}</span>
+              <span className="numeric label relative shrink-0">{p.score}</span>
             </div>
           );
         })}
-        {/* The black dividing lines are the container's own background, so an
-            unfilled cell shows up as a solid block. Rooms hold two to eight
-            players against a grid of four, and of two on a phone, so both
-            shapes need their own padding. */}
+        {/* An unfilled cell shows up as a solid block of that background.
+            Rooms hold two to eight players against a grid of four, and of two
+            on a phone, so both shapes need their own padding. */}
         {blanks(ordered.length, 4).map((k) => (
           <div key={k} aria-hidden className="hidden bg-paper sm:block" />
         ))}
