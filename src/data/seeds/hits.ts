@@ -6,6 +6,13 @@
  *
  * 90 of 100 tracks resolved. The rest are not on the Thai
  * iTunes storefront, or are there under a title too different to match.
+ *
+ * Five of these are not Thai songs — Ariana Grande, JENNIE twice, Malcolm Todd,
+ * Post Malone — and that is deliberate. The chart playlists narrow themselves by
+ * script because a storefront chart is what a country plays rather than what it
+ * sings; this one is a specific export someone made, and it is kept as it was
+ * made. Do not add a filter here to "fix" the mismatch with the chart
+ * playlists.
  */
 export const HITS_TRACK_IDS: readonly string[] = [
   "1803357532", // 2Ectasy — Faded (feat. Z9) [Special Version]
