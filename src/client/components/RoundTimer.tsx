@@ -27,6 +27,7 @@ export function RoundTimer({
   audibleMs,
   serverNow,
   idle,
+  countIn,
 }: {
   startAt: number;
   deadlineAt: number;
@@ -41,6 +42,12 @@ export function RoundTimer({
   serverNow: () => number;
   /** True while waiting for everyone's audio: show the shape, not a count. */
   idle?: boolean;
+  /**
+   * True on the Round that opens a Match, whose lead-in is long enough to be
+   * counted out loud. Every other Round's is a beat, and a number that flashed
+   * "2, 1" on the way past would be noise rather than a count.
+   */
+  countIn?: boolean;
 }) {
   const { t } = useLang();
   // Signed, because the Round goes live a beat before the clip starts and
@@ -131,10 +138,15 @@ export function RoundTimer({
         >
           {/* Ceil so the count reaches zero exactly when answers stop being
               accepted, rather than showing 0 for a whole second while they
-              still are. */}
+              still are. The count-in borrows the same slot and the same ceil,
+              counting the negative offset down to the moment the music starts —
+              it stays ink rather than going red, because red is what the last
+              seconds of the answer window are going to need. */}
           {idle
             ? Math.max(Math.round(windowMs / 1000), 1)
-            : Math.ceil((windowMs - elapsedMs) / 1000)}
+            : countIn && leadIn
+              ? Math.ceil(-offsetMs / 1000)
+              : Math.ceil((windowMs - elapsedMs) / 1000)}
         </span>
       </div>
     </div>

@@ -71,12 +71,56 @@ async function armed(players = 2) {
   return { room, ids };
 }
 
+describe("the count-in", () => {
+  // Three whole seconds, so the client can show 3, then 2, then 1, and have
+  // the music land on zero rather than halfway through the "1".
+  it("gives the first round of a match room for three counts", () => {
+    expect(ROOM_TUNING.FIRST_LEAD_IN_MS).toBe(3_000);
+  });
+
+  it("is longer than the beat every other round gets", () => {
+    expect(ROOM_TUNING.FIRST_LEAD_IN_MS).toBeGreaterThan(ROOM_TUNING.LEAD_IN_MS);
+  });
+
+  it("counts the match in, then stops counting", async () => {
+    const { room, ids } = await armed(1);
+
+    // Round one: the long one.
+    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.FIRST_LEAD_IN_MS);
+    vi.advanceTimersByTime(ROOM_TUNING.FIRST_LEAD_IN_MS);
+    store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
+    expect(room.phase).toBe("reveal");
+
+    // Round two: back to the short beat, because by now the room is watching.
+    vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+    expect(room.phase).toBe("loading");
+    store.markReady(room, ids[0]!, 1);
+    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.LEAD_IN_MS);
+  });
+
+  it("counts a rematch in again from the top", async () => {
+    const { room, ids } = await armed(1);
+    for (let i = 0; i < 3; i++) {
+      vi.advanceTimersByTime(Math.max(room.match!.startAt - Date.now(), 0));
+      store.submitAnswer(room, ids[0]!, i, room.match!.rounds[i]!.answer.id);
+      vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+      if (room.phase === "loading") store.markReady(room, ids[0]!, i + 1);
+    }
+    expect(room.phase).toBe("finished");
+
+    store.returnToLobby(room, ids[0]!);
+    await startMedium(room, ids[0]!);
+    store.markReady(room, ids[0]!, 0);
+    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.FIRST_LEAD_IN_MS);
+  });
+});
+
 describe("the lead-in", () => {
   it("puts the start in the future rather than starting on the last buffer", async () => {
     const { room } = await armed();
 
     expect(room.phase).toBe("playing");
-    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.LEAD_IN_MS);
+    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.FIRST_LEAD_IN_MS);
   });
 
   // The whole point of a lead-in is that the player is not paying for it. If
@@ -98,7 +142,7 @@ describe("the lead-in", () => {
     // lead-in can be measured from it.
     vi.advanceTimersByTime(ROOM_TUNING.AUDIO_READY_TIMEOUT_MS);
     expect(room.phase).toBe("playing");
-    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.LEAD_IN_MS);
+    expect(room.match!.startAt).toBe(Date.now() + ROOM_TUNING.FIRST_LEAD_IN_MS);
   });
 });
 
@@ -118,7 +162,7 @@ describe("answering during the lead-in", () => {
     const { room, ids } = await armed();
     const correct = room.match!.rounds[0]!.answer.id;
 
-    vi.advanceTimersByTime(ROOM_TUNING.LEAD_IN_MS - 1);
+    vi.advanceTimersByTime(ROOM_TUNING.FIRST_LEAD_IN_MS - 1);
     expect(store.submitAnswer(room, ids[0]!, 0, correct)).toBeNull();
   });
 
@@ -126,7 +170,7 @@ describe("answering during the lead-in", () => {
     const { room, ids } = await armed();
     const correct = room.match!.rounds[0]!.answer.id;
 
-    vi.advanceTimersByTime(ROOM_TUNING.LEAD_IN_MS);
+    vi.advanceTimersByTime(ROOM_TUNING.FIRST_LEAD_IN_MS);
     expect(store.submitAnswer(room, ids[0]!, 0, correct)).toMatchObject({
       correct: true,
     });
@@ -140,7 +184,7 @@ describe("answering during the lead-in", () => {
     const plan = room.match!.rounds[0]!;
     const correct = plan.answer.id;
 
-    vi.advanceTimersByTime(ROOM_TUNING.LEAD_IN_MS);
+    vi.advanceTimersByTime(ROOM_TUNING.FIRST_LEAD_IN_MS);
     store.submitAnswer(room, ids[0]!, 0, correct);
 
     expect(room.players.get(ids[0]!)!.score).toBe(
@@ -160,7 +204,7 @@ describe("closing the round", () => {
     const plan = room.match!.rounds[0]!;
 
     // One millisecond short of the whole thing: still live.
-    vi.advanceTimersByTime(ROOM_TUNING.LEAD_IN_MS + plan.answerWindowMs - 1);
+    vi.advanceTimersByTime(ROOM_TUNING.FIRST_LEAD_IN_MS + plan.answerWindowMs - 1);
     expect(room.phase).toBe("playing");
 
     vi.advanceTimersByTime(1);

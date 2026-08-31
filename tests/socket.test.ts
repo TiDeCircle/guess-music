@@ -94,9 +94,14 @@ function nextState(s: Socket, match: (state: any) => boolean, ms = 4000) {
  * These tests run against a live server on real timers, so the beat between the
  * room going live and the clip starting has to actually elapse — answers are
  * refused until it does. Only the tests that submit an answer pay for it.
+ *
+ * Waits on the Round's own `startAt` rather than a constant: the first Round of
+ * a match is counted in over three seconds and the rest get a short beat, and
+ * sleeping the longer one every time would put seconds on this file for
+ * nothing. Server and test share a process, so the two clocks are the same one.
  */
-const goLive = () =>
-  new Promise((r) => setTimeout(r, ROOM_TUNING.LEAD_IN_MS + 50));
+const goLive = (round: any) =>
+  new Promise((r) => setTimeout(r, Math.max(round.startAt - Date.now(), 0) + 50));
 
 describe("socket wiring", () => {
   it("creates a room and hands back a code, a player and a session", async () => {
@@ -165,7 +170,7 @@ describe("socket wiring", () => {
     guest.emit("round:ready", { index: loading.round.index });
 
     const playing = await nextState(host, (s) => s.phase === "playing");
-    await goLive();
+    await goLive(playing.round);
     expect(playing.round.choices).toHaveLength(4);
     // The answer must not be on the wire before the reveal.
     expect(JSON.stringify(playing.round)).not.toContain("correct");
@@ -250,7 +255,7 @@ describe("socket wiring", () => {
       host.emit("round:ready", { index: loading.round.index });
       guest.emit("round:ready", { index: loading.round.index });
       const open = await nextState(host, (s) => s.phase === "playing");
-      if (waitOut) await goLive();
+      if (waitOut) await goLive(open.round);
       return { host, guest, round: open.round };
     }
 

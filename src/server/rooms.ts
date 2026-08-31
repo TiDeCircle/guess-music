@@ -57,6 +57,20 @@ const AUDIO_READY_TIMEOUT_MS = 5_000;
  */
 const LEAD_IN_MS = 1_200;
 
+/**
+ * The same beat, stretched for the first Round of a Match.
+ *
+ * Pressing start is the one moment in a Match where nobody is watching yet —
+ * the room has been picking playlists, somebody is still putting their
+ * headphones on. That earns a real count-in, and three whole seconds is what it
+ * takes to show a three, a two and a one and still land the music on zero.
+ *
+ * Every Round after this one gets the short beat instead. By then the room is
+ * already looking at the screen, and a ceremony repeated ten times is not a
+ * ceremony, it is a wait.
+ */
+const FIRST_LEAD_IN_MS = 3_000;
+
 /** An idle Room with nobody in it is swept up after this. */
 const EMPTY_ROOM_TTL_MS = 60_000;
 
@@ -488,13 +502,14 @@ export class RoomStore {
     // music begins, and every clock in the game — the countdown, the score's
     // elapsed time, the client's playback — is measured from it, so the lead-in
     // costs the players none of their answer window.
-    match.startAt = Date.now() + LEAD_IN_MS;
+    const leadInMs = match.index === 0 ? FIRST_LEAD_IN_MS : LEAD_IN_MS;
+    match.startAt = Date.now() + leadInMs;
     match.deadlineAt = match.startAt + plan.answerWindowMs;
     room.phase = "playing";
 
     room.timer = setTimeout(
       () => this.closeRound(room),
-      LEAD_IN_MS + plan.answerWindowMs,
+      leadInMs + plan.answerWindowMs,
     );
     this.events.onState(room);
   }
@@ -778,6 +793,7 @@ export const ROOM_TUNING = {
   REVEAL_MS,
   AUDIO_READY_TIMEOUT_MS,
   LEAD_IN_MS,
+  FIRST_LEAD_IN_MS,
   EMPTY_ROOM_TTL_MS,
   DEFAULT_ROUND_COUNT,
 };

@@ -112,6 +112,8 @@ export function PlayScreen({
               audibleMs={round.stagesMs.length > 0 ? round.stagesMs[level] : undefined}
               serverNow={serverNow}
               idle={loading}
+              // Only the Round that opens the Match is counted in.
+              countIn={round.index === 0}
             />
           </div>
 
