@@ -71,6 +71,40 @@ export function PlayScreen({
     return () => clearTimeout(lead);
   }, [startAt, serverNow]);
 
+  /**
+   * Answer with the number keys.
+   *
+   * A Quiz round is a race against a clock, and moving a hand to a mouse and
+   * back costs more of it than reading the options does. The numerals on the
+   * tiles are what makes this discoverable rather than a secret.
+   *
+   * Sits with the other hooks, above the early return, so the guards it needs
+   * are re-derived here rather than read from further down the component.
+   */
+  useEffect(() => {
+    if (!round || MODES[room.config.mode].typed) return;
+    if (room.phase === "loading" || !armed || picked !== null) return;
+    if (playerId && room.answeredPlayerIds.includes(playerId)) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      // A shortcut that fires while someone is typing their name into a field
+      // is a bug, and a modifier combination belongs to the browser.
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable]")) return;
+
+      const index = Number(event.key) - 1;
+      const choice = round.choices[index];
+      if (!Number.isInteger(index) || index < 0 || !choice) return;
+      event.preventDefault();
+      setPicked(choice.id);
+      onAnswer(round.index, choice.id);
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [round, room, armed, picked, playerId, onAnswer]);
+
   if (!round) return null;
 
   const mode = MODES[room.config.mode];
@@ -86,8 +120,11 @@ export function PlayScreen({
   return (
     // Keyed by round so the entrance re-fires each time, rather than only on
     // the first mount of the match.
-    <div key={round.index} className="enter flex flex-col gap-8">
-      <div className="grid gap-8 md:grid-cols-12">
+    // `flex-1` all the way down is what stops the round sitting in the top
+    // half of a tall screen with nothing under it. The shell already offers the
+    // height; nothing here was claiming it.
+    <div key={round.index} className="enter flex flex-1 flex-col gap-8">
+      <div className="grid flex-1 gap-8 md:grid-cols-12">
         <section className="md:col-span-4">
           <FieldLabel>
             {t("round")} {round.index + 1} / {round.total}
@@ -132,7 +169,7 @@ export function PlayScreen({
           )}
         </section>
 
-        <section className="md:col-span-8">
+        <section className="flex flex-col md:col-span-8">
           <FieldLabel>{t("whichSong")}</FieldLabel>
 
           {mode.typed ? (
@@ -157,8 +194,8 @@ export function PlayScreen({
             // Two by two at every width. Stacking these on a phone pushes the
             // fourth option below the fold, which means scrolling while the
             // clock runs — so the grid holds and the type shrinks instead.
-            <div className="mt-2 grid grid-cols-2 gap-px bg-ink">
-              {round.choices.map((choice) => {
+            <div className="mt-2 grid flex-1 grid-cols-2 grid-rows-2 gap-px bg-ink">
+              {round.choices.map((choice, i) => {
                 const isPicked = picked === choice.id;
                 return (
                   <button
@@ -184,7 +221,7 @@ export function PlayScreen({
                     // beat to fall back, because that is the screen answering.
                     // Symmetric timing here made the whole grid feel like it
                     // changed by itself.
-                    className={`group flex min-h-32 flex-col justify-center p-3 text-left transition-colors md:min-h-44 md:p-4 ${
+                    className={`group flex min-h-32 flex-col justify-between gap-3 p-3 text-left transition-colors md:min-h-44 md:p-4 ${
                       isPicked
                         ? "bg-ink text-paper duration-[var(--duration-press)]"
                         : picked !== null
@@ -192,7 +229,29 @@ export function PlayScreen({
                           : "bg-paper text-ink enabled:hover:bg-grey-100 disabled:text-grey-500"
                     }`}
                   >
-                    <span className="text-[0.9375rem] font-medium break-words md:text-[length:var(--text-body)]">
+                    {/* The number this option answers to on the keyboard. It
+                        also gives the tile something in its top corner to hold
+                        it together — since the artist line came off, a title
+                        alone was floating in a very large box. */}
+                    <span
+                      className={`numeric label transition-colors ${
+                        isPicked ? "text-grey-300" : "text-grey-500"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    {/* Between two of the design's four sizes rather than a
+                        fifth one: body on a phone, the title size on a wide
+                        screen, and nothing in between that is not one of them
+                        interpolated. */}
+                    <span
+                      className="font-medium text-pretty break-words"
+                      style={{
+                        fontSize:
+                          "clamp(var(--text-body), 2.2vw, var(--text-title))",
+                        lineHeight: 1.15,
+                      }}
+                    >
                       {choice.title}
                     </span>
                   </button>

@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { RoomState } from "@/shared/types";
 import { useLang } from "@/client/i18n";
 import { answeredSummary } from "@/client/roundStatus";
@@ -12,6 +18,17 @@ function blanks(count: number, columns: number): string[] {
   const missing = (columns - (count % columns)) % columns;
   return Array.from({ length: missing }, (_, i) => `blank-${columns}-${i}`);
 }
+
+/**
+ * How many columns a room of this size should be drawn in.
+ *
+ * A fixed grid of four drew three empty boxes for somebody playing alone, which
+ * is the loneliest a screen can look in a game about playing with friends. The
+ * count is data, not a design decision, so the grid follows it — up to the four
+ * (two on a phone) the layout was built around.
+ */
+const columnsFor = (players: number, most: number) =>
+  Math.max(Math.min(players, most), 1);
 
 /** Read one of the motion tokens, so script and stylesheet stay in step. */
 function token(el: Element, name: string, fallback: string): string {
@@ -140,11 +157,18 @@ export function PlayerStrip({
       </FieldLabel>
       <div
         ref={gridRef}
+        // `.option-row` reads these two, the way the lobby's own grids do.
+        style={
+          {
+            "--cols": columnsFor(ordered.length, 4),
+            "--cols-narrow": columnsFor(ordered.length, 2),
+          } as CSSProperties
+        }
         // The dividing lines are the container's own background, which a cell
         // in flight would otherwise be sliding across. Dropping them to paper
         // for the length of the flight lets the grid dissolve and reform around
         // the move instead of framing it in black.
-        className={`mt-2 grid grid-cols-2 gap-px transition-colors sm:grid-cols-4 ${
+        className={`option-row mt-2 grid gap-px transition-colors ${
           flying ? "bg-paper" : "bg-ink"
         }`}
       >
@@ -183,13 +207,13 @@ export function PlayerStrip({
             </div>
           );
         })}
-        {/* An unfilled cell shows up as a solid block of that background.
-            Rooms hold two to eight players against a grid of four, and of two
-            on a phone, so both shapes need their own padding. */}
-        {blanks(ordered.length, 4).map((k) => (
+        {/* Only ever needed for a part-filled last row — a room of five in a
+            grid of four. Below the column count there is no gap to fill, which
+            is the whole point of letting the count drive the columns. */}
+        {blanks(ordered.length, columnsFor(ordered.length, 4)).map((k) => (
           <div key={k} aria-hidden className="hidden bg-paper sm:block" />
         ))}
-        {blanks(ordered.length, 2).map((k) => (
+        {blanks(ordered.length, columnsFor(ordered.length, 2)).map((k) => (
           <div key={k} aria-hidden className="bg-paper sm:hidden" />
         ))}
       </div>
