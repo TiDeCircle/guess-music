@@ -14,7 +14,10 @@
   --color-ink: #000000;
   --color-grey-100: #f2f2f2;
   --color-grey-300: #d8d8d8;
-  --color-grey-500: #8c8c8c;
+  /* The darkest grey is set by contrast, not by taste: this is the mid grey
+     that still clears 4.5:1 against paper at 12px, which is the size every
+     label in this design is set at. */
+  --color-grey-500: #767676;
   --color-accent: #e30613;
 
   /* Four sizes, wide gaps. A Swiss poster does not gently step through sizes. */
@@ -33,6 +36,47 @@
 
 :root {
   color-scheme: light;
+}
+
+/**
+ * The same design after dark.
+ *
+ * Paper and ink swap and the grey ramp inverts with them, which is all this
+ * palette needs: every colour in the app goes through these tokens, so nothing
+ * else changes. The relationships are what carry over, not the values — grey-300
+ * is "faint on paper, clear on ink" in both, so a placeholder stays as quiet and
+ * a label inside a filled cell stays as legible as it was.
+ *
+ * Neither end is pure. #000 on #fff is a printing press; on a screen at night it
+ * is a headache.
+ *
+ * Three states, because a browser has three: an explicit choice stamps
+ * `data-theme` and wins, and with nothing stamped the system setting decides.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-paper: #0e0e0e;
+    --color-ink: #f2f2f2;
+    --color-grey-100: #1c1c1c;
+    --color-grey-300: #333333;
+    /* Lifted rather than inverted: on the dark ground the same role needs a
+       lighter grey to clear the same 4.5:1. */
+    --color-grey-500: #8c8c8c;
+    /* The press red goes muddy on a dark ground and has to be lifted to keep
+       its one meaning legible. */
+    --color-accent: #ff3b30;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: #0e0e0e;
+  --color-ink: #f2f2f2;
+  --color-grey-100: #1c1c1c;
+  --color-grey-300: #333333;
+  --color-grey-500: #8c8c8c;
+  --color-accent: #ff3b30;
 }
 
 html,

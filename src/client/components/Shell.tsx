@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LANGS, useLang } from "@/client/i18n";
 import type { ConnectionStatus } from "@/client/useGame";
+import { ThemeToggle } from "./ThemeToggle";
 import { VolumeControl } from "./VolumeControl";
 
 /**
@@ -45,6 +46,8 @@ export function Shell({
                 t(status === "connecting" ? "connecting" : "offline")}
               <span className="sr-only">{status}</span>
             </span>
+
+            <ThemeToggle />
 
             <div className="label flex items-center gap-0 border border-ink">
               {LANGS.map((code) => (

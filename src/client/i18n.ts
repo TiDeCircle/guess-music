@@ -152,6 +152,9 @@ export const STRINGS = {
   rounds: { th: "จำนวนข้อ", en: "Rounds" },
   roundsUnit: { th: "ข้อ", en: "rounds" },
 
+  themeToDark: { th: "เปลี่ยนเป็นโหมดมืด", en: "Switch to dark mode" },
+  themeToLight: { th: "เปลี่ยนเป็นโหมดสว่าง", en: "Switch to light mode" },
+
   volume: { th: "ระดับเสียง", en: "Volume" },
   volumeUp: { th: "เพิ่มเสียง", en: "Louder" },
   volumeDown: { th: "ลดเสียง", en: "Quieter" },
