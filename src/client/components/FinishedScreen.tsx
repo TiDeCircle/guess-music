@@ -12,6 +12,7 @@ export function FinishedScreen({
   previewingId,
   onTogglePreview,
   onPlayAgain,
+  onBackToLobby,
   onLeave,
 }: {
   room: RoomState;
@@ -19,6 +20,7 @@ export function FinishedScreen({
   previewingId: string | null;
   onTogglePreview: (trackId: string, url: string) => void;
   onPlayAgain: () => void;
+  onBackToLobby: () => void;
   onLeave: () => void;
 }) {
   const { t } = useLang();
@@ -48,8 +50,17 @@ export function FinishedScreen({
             </>
           )}
 
+          {/* Play again keeps the settings; back to the lobby is how you change
+              them without everyone leaving and passing a new room code around. */}
           <div className="mt-10 grid gap-4">
-            {isHost && <Button onClick={onPlayAgain}>{t("playAgain")}</Button>}
+            {isHost && (
+              <>
+                <Button onClick={onPlayAgain}>{t("playAgain")}</Button>
+                <Button variant="outline" onClick={onBackToLobby}>
+                  {t("backToLobby")}
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={onLeave}>
               {t("leave")}
             </Button>

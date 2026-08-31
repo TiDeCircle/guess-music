@@ -35,7 +35,7 @@ export const STRINGS = {
   you: { th: "คุณ", en: "You" },
   waitingForHost: { th: "รอหัวห้องเริ่มเกม", en: "Waiting for the host" },
   startMatch: { th: "เริ่มเกม", en: "Start match" },
-  backToLobby: { th: "กลับห้องรอ", en: "Back to lobby" },
+  backToLobby: { th: "เปลี่ยนเพลง / ความยาก", en: "Change songs or difficulty" },
   leave: { th: "ออก", en: "Leave" },
   copied: { th: "คัดลอกแล้ว", en: "Copied" },
   shareHint: {

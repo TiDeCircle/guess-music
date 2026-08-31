@@ -116,6 +116,7 @@ export default function Page() {
             setStarting(true);
             game.startMatch();
           }}
+          onBackToLobby={game.returnToLobby}
           onLeave={game.leave}
         />
       )}

@@ -95,6 +95,11 @@ export interface ClientToServerEvents {
   "room:join": (payload: unknown, ack: (res: Ack<JoinResult>) => void) => void;
   "room:config": (payload: unknown) => void;
   "match:start": () => void;
+  /**
+   * Host takes the room back to the lobby after a Match, so the settings can be
+   * changed without everyone leaving and swapping a new room code.
+   */
+  "match:lobby": () => void;
   /** Client reports its audio is buffered for this Round. */
   "round:ready": (payload: unknown) => void;
   "round:answer": (payload: unknown) => void;

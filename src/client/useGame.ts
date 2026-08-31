@@ -319,6 +319,14 @@ export function useGame() {
     [previewingId],
   );
 
+  /** Host only: back to the lobby with the room and its players intact. */
+  const returnToLobby = useCallback(() => {
+    setError(null);
+    audioRef.current?.stop();
+    setPreviewingId(null);
+    socketRef.current?.emit("match:lobby");
+  }, []);
+
   const answer = useCallback((index: number, choiceId: string) => {
     socketRef.current?.emit("round:answer", { index, choiceId });
   }, []);
@@ -358,6 +366,7 @@ export function useGame() {
     joinRoom,
     setConfig,
     startMatch,
+    returnToLobby,
     answer,
     leave,
     serverNow,

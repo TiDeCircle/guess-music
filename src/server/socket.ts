@@ -108,6 +108,16 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       });
     });
 
+    socket.on("match:lobby", () => {
+      const ctx = contextFor(socket);
+      if (!ctx) return;
+      try {
+        store.returnToLobby(ctx.room, ctx.playerId);
+      } catch (err) {
+        fail(socket, "lobby", messageFor(err));
+      }
+    });
+
     socket.on("round:ready", (payload) => {
       const ctx = contextFor(socket);
       if (!ctx) return;
