@@ -6,6 +6,7 @@ import { DIFFICULTIES } from "@/shared/difficulty";
 import { MODES } from "@/shared/modes";
 import { heardleTierPoints } from "@/shared/scoring";
 import { useLang } from "@/client/i18n";
+import { shortTitle } from "@/client/songTitle";
 import type { RoundOutcome } from "@/client/useGame";
 import { RoundTimer } from "./RoundTimer";
 import { RoundDots } from "./RoundDots";
@@ -236,6 +237,7 @@ export function PlayScreen({
             <div className="mt-2 grid flex-1 grid-cols-2 grid-rows-2 gap-px bg-ink">
               {round.choices.map((choice, i) => {
                 const isPicked = picked === choice.id;
+                const label = shortTitle(choice.title);
                 return (
                   <button
                     key={choice.id}
@@ -260,7 +262,7 @@ export function PlayScreen({
                     // beat to fall back, because that is the screen answering.
                     // Symmetric timing here made the whole grid feel like it
                     // changed by itself.
-                    className={`group flex min-h-32 flex-col gap-2 p-3 text-left transition-colors md:min-h-44 md:p-4 ${
+                    className={`group flex min-h-32 flex-col gap-2 overflow-hidden p-3 text-left transition-colors md:min-h-44 md:p-4 ${
                       isPicked
                         ? "bg-ink text-paper duration-[var(--duration-press)]"
                         : picked !== null
@@ -285,19 +287,28 @@ export function PlayScreen({
                         hole between them, which is what made a bigger tile read
                         as an emptier one.
 
-                        The size is between two of the design's four rather than
-                        a fifth one: body on a phone, the title size on a wide
-                        screen, and nothing in between that is not one of those
-                        interpolated. */}
-                    <span
-                      className="flex flex-1 items-center font-medium text-pretty break-words"
-                      style={{
-                        fontSize:
-                          "clamp(var(--text-body), 2.2vw, var(--text-title))",
-                        lineHeight: 1.15,
-                      }}
-                    >
-                      {choice.title}
+                        A long title drops to body size rather than being set at
+                        the size a short one gets. Scaling every title up to the
+                        title size is what turned one iTunes credit list into
+                        thirteen lines of 32px type and pushed the two options
+                        below it off the screen.
+
+                        Neither size is a new one: they are two of the design's
+                        four, with the wide-screen end interpolated between
+                        them. */}
+                    <span className="flex min-h-0 flex-1 items-center">
+                      <span
+                        className="line-clamp-6 font-medium text-pretty break-words"
+                        style={{
+                          fontSize:
+                            label.length > 40
+                              ? "var(--text-body)"
+                              : "clamp(var(--text-body), 2.2vw, var(--text-title))",
+                          lineHeight: 1.15,
+                        }}
+                      >
+                        {label}
+                      </span>
                     </span>
                   </button>
                 );
