@@ -105,10 +105,27 @@ sudo certbot --nginx -d guess-music.madebytide.xyz
 
 ---
 
+## สภาพหลัง deploy จริง (2026-08-31)
+
+| อะไร | ค่า |
+|---|---|
+| URL | https://guess-music.madebytide.xyz |
+| pm2 | `guess-music` fork 1 instance, cwd `/var/www/guess-music` |
+| Cloudflare | **Proxied** — cert ที่ผู้ใช้เห็นเป็นของ Cloudflare ส่วน cert ของ Let's Encrypt ใช้ระหว่าง Cloudflare กับ origin |
+| WebSocket | ผ่านทั้งสองชั้น ยืนยันด้วย `101 Switching Protocols` ทั้งผ่าน Cloudflare และตรงเข้า origin |
+
+`git remote` ของสำเนาบนเซิร์ฟเวอร์ชี้ไปที่ `/home/tide/guess-music` เพราะยังไม่มี repo บน GitHub — ตอน update จึงเป็น `git pull origin master` จาก path นั้น
+
 ## เช็กว่าขึ้นจริง
 
 ```bash
 curl -s https://guess-music.madebytide.xyz/healthz && pm2 status guess-music
+```
+
+เช็ก WebSocket โดยตรง — ต้องได้ `101 Switching Protocols` **ต้องบังคับ HTTP/1.1** ไม่งั้น Cloudflare จะตอบ HTTP/2 400 ซึ่งดูเหมือนพังทั้งที่ไม่ได้พัง:
+
+```bash
+curl -si --http1.1 -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "https://guess-music.madebytide.xyz/socket.io/?EIO=4&transport=websocket" | head -1
 ```
 
 แล้วเปิดเว็บสองแท็บ สร้างห้องจากแท็บหนึ่ง เอารหัสไปเข้าอีกแท็บ ถ้าทั้งสองเห็นกันแปลว่า WebSocket ผ่าน Nginx แล้ว
