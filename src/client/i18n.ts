@@ -187,6 +187,7 @@ export const STRINGS = {
   whichSong: { th: "เพลงอะไร", en: "Which song?" },
   answered: { th: "ตอบแล้ว", en: "Answered" },
   timeLeft: { th: "เวลาที่เหลือ", en: "Time left" },
+  getReady: { th: "เตรียมตัว", en: "Get ready" },
   musicPlaying: { th: "กำลังเล่นเพลง", en: "Music playing" },
   silence: { th: "เพลงหยุดแล้ว ยังตอบได้", en: "Music stopped — still answering" },
   yourRounds: { th: "ผลของคุณ", en: "Your rounds" },

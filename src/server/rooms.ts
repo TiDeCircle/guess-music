@@ -42,6 +42,21 @@ const REVEAL_MS = 6_000;
  */
 const AUDIO_READY_TIMEOUT_MS = 5_000;
 
+/**
+ * How long after the room is ready the clip actually starts.
+ *
+ * Without this the music began on the exact millisecond the slowest client
+ * finished buffering, which made the start of the question a function of the
+ * network rather than of the game — and since the next Round's clip is
+ * prefetched during the reveal, between rounds that millisecond arrived with no
+ * warning at all. The clip is the whole question, so everyone gets the same
+ * moment to look up before it is asked.
+ *
+ * Short on purpose. This is paid ten times a match, and a countdown long enough
+ * to be a ceremony is one the room will sit through three hundred seconds of.
+ */
+const LEAD_IN_MS = 1_200;
+
 /** An idle Room with nobody in it is swept up after this. */
 const EMPTY_ROOM_TTL_MS = 60_000;
 
@@ -469,11 +484,18 @@ export class RoomStore {
       return;
     }
 
-    match.startAt = Date.now();
+    // The Round goes live now; the clip does not. `startAt` is the moment the
+    // music begins, and every clock in the game — the countdown, the score's
+    // elapsed time, the client's playback — is measured from it, so the lead-in
+    // costs the players none of their answer window.
+    match.startAt = Date.now() + LEAD_IN_MS;
     match.deadlineAt = match.startAt + plan.answerWindowMs;
     room.phase = "playing";
 
-    room.timer = setTimeout(() => this.closeRound(room), plan.answerWindowMs);
+    room.timer = setTimeout(
+      () => this.closeRound(room),
+      LEAD_IN_MS + plan.answerWindowMs,
+    );
     this.events.onState(room);
   }
 
@@ -533,6 +555,11 @@ export class RoomStore {
     const match = room.match;
     if (!match || room.phase !== "playing") return null;
     if (index !== match.index) return null;
+    // Nothing has been heard yet. Refusing here is not only fair — the elapsed
+    // time would be negative, and `scoreAnswer` clamps that to the maximum
+    // bonus, so a blind guess during the lead-in would have paid the best score
+    // in the game.
+    if (Date.now() < match.startAt) return null;
 
     const mode = MODES[room.config.mode];
     const plan = match.rounds[match.index];
@@ -750,6 +777,7 @@ export const ROOM_TUNING = {
   RECONNECT_GRACE_MS,
   REVEAL_MS,
   AUDIO_READY_TIMEOUT_MS,
+  LEAD_IN_MS,
   EMPTY_ROOM_TTL_MS,
   DEFAULT_ROUND_COUNT,
 };

@@ -327,7 +327,20 @@ export function useGame() {
     const key = `${round.index}:${myLevel}`;
     if (phase === "playing" && playedRef.current !== key) {
       playedRef.current = key;
-      audio.play(round.previewUrl, audibleMs);
+      // The Round goes live a beat before the clip does, so nobody has to
+      // catch the first second by luck. `startAt` is that moment, corrected
+      // for this client's clock skew — a level bought mid-round is already
+      // past it and plays at once.
+      const wait = Math.max(round.startAt - (Date.now() + clockOffsetRef.current), 0);
+      if (wait === 0) {
+        audio.play(round.previewUrl, audibleMs);
+      } else {
+        const lead = setTimeout(
+          () => audio.play(round.previewUrl, audibleMs),
+          wait,
+        );
+        return () => clearTimeout(lead);
+      }
     }
   }, [phase, round, myLevel, audibleMs]);
 

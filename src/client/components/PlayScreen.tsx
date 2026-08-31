@@ -55,10 +55,28 @@ export function PlayScreen({
   const [picked, setPicked] = useState<string | null>(null);
   useEffect(() => setPicked(null), [roundIndex]);
 
+  // The Round is live a beat before the clip is, so everyone gets the same
+  // moment to look up. The server refuses answers through it either way; this
+  // is what stops a tap into that beat looking like it was dropped.
+  const startAt = round?.startAt ?? 0;
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const wait = startAt - serverNow();
+    if (wait <= 0) {
+      setArmed(true);
+      return;
+    }
+    setArmed(false);
+    const lead = setTimeout(() => setArmed(true), wait);
+    return () => clearTimeout(lead);
+  }, [startAt, serverNow]);
+
   if (!round) return null;
 
   const mode = MODES[room.config.mode];
   const loading = room.phase === "loading";
+  /** Nothing is answerable until the audio is buffered *and* the clip is on. */
+  const waiting = loading || !armed;
   const done = Boolean(playerId && room.answeredPlayerIds.includes(playerId));
   const multiplier = DIFFICULTIES[room.config.difficulty].multiplier;
   const tierPoints = round.stagesMs.map((_, i) =>
@@ -104,7 +122,7 @@ export function PlayScreen({
                 tierPoints={tierPoints}
                 level={level}
                 shared={mode.shared}
-                canUnlock={!loading && !done}
+                canUnlock={!waiting && !done}
                 onUnlock={() => onUnlock(round.index)}
                 onReplay={onReplay}
               />
@@ -129,7 +147,7 @@ export function PlayScreen({
             <div className="mt-4">
               <SongSearch
                 key={round.index}
-                disabled={loading || done}
+                disabled={waiting || done}
                 // Our own rejected titles, plus the room's in a shared mode.
                 wrongGuesses={[
                   ...round.tried,
@@ -154,7 +172,7 @@ export function PlayScreen({
                   <button
                     key={choice.id}
                     type="button"
-                    disabled={loading || done || picked !== null}
+                    disabled={waiting || done || picked !== null}
                     aria-pressed={isPicked}
                     onClick={() => {
                       // Locked in immediately: an answer is final, and showing

@@ -68,6 +68,17 @@ async function startMedium(room: ReturnType<typeof seed>["room"], hostId: string
   await store.startMatch(room, hostId);
 }
 
+/**
+ * Sit through the lead-in.
+ *
+ * The clock now starts a beat after the last client buffers, so that everyone
+ * gets the same moment to look up before the clip. Answers are refused until
+ * it passes, which is why almost every test that submits one waits here first.
+ */
+function goLive() {
+  vi.advanceTimersByTime(ROOM_TUNING.LEAD_IN_MS);
+}
+
 describe("room lifecycle", () => {
   it("gives every room a distinct four-letter code", () => {
     const codes = new Set<string>();
@@ -170,6 +181,7 @@ describe("lockstep sequence", () => {
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
     store.markReady(room, ids[1]!, 0);
+    goLive();
 
     // One player answers; the round must not advance for anyone.
     const correct = room.match!.rounds[0]!.answer.id;
@@ -186,6 +198,7 @@ describe("lockstep sequence", () => {
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
     store.markReady(room, ids[1]!, 0);
+    goLive();
 
     vi.advanceTimersByTime(room.match!.rounds[0]!.answerWindowMs + 50);
     expect(room.phase).toBe("reveal");
@@ -197,6 +210,7 @@ describe("lockstep sequence", () => {
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
     store.markReady(room, ids[1]!, 0);
+    goLive();
     const correct = room.match!.rounds[0]!.answer.id;
 
     vi.advanceTimersByTime(2_000);
@@ -214,6 +228,7 @@ describe("lockstep sequence", () => {
     const { room, ids } = seed(1);
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
+    goLive();
     const plan = room.match!.rounds[0]!;
     const wrong = plan.choices.find((c) => c.id !== plan.answer.id)!.id;
 
@@ -227,6 +242,7 @@ describe("lockstep sequence", () => {
     const { room, ids } = seed(1);
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
+    goLive();
     store.submitAnswer(room, ids[0]!, 5, room.match!.rounds[0]!.answer.id);
     expect(room.players.get(ids[0]!)!.score).toBe(0);
   });
@@ -235,6 +251,7 @@ describe("lockstep sequence", () => {
     const { room, ids } = seed(1);
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
+    goLive();
     store.submitAnswer(room, ids[0]!, 0, "not-a-choice");
     expect(room.players.get(ids[0]!)!.score).toBe(0);
     expect(room.phase).toBe("playing");
@@ -247,6 +264,7 @@ describe("lockstep sequence", () => {
     for (let i = 0; i < 3; i++) {
       expect(room.phase).toBe("loading");
       store.markReady(room, ids[0]!, i);
+      goLive();
       expect(room.phase).toBe("playing");
       store.submitAnswer(room, ids[0]!, i, room.match!.rounds[i]!.answer.id);
       expect(room.phase).toBe("reveal");
@@ -260,6 +278,7 @@ describe("lockstep sequence", () => {
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
     store.markReady(room, ids[1]!, 0);
+    goLive();
 
     store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
     expect(room.phase).toBe("playing");
@@ -272,6 +291,7 @@ describe("lockstep sequence", () => {
     const { room, ids } = seed(1);
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
+    goLive();
 
     const state = toRoomState(room);
     const serialised = JSON.stringify(state.round);
@@ -298,6 +318,7 @@ describe("lockstep sequence", () => {
     const { room, ids } = seed(1);
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
+    goLive();
     store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
     expect(room.players.get(ids[0]!)!.score).toBeGreaterThan(0);
 
@@ -324,6 +345,7 @@ describe("lockstep sequence", () => {
       const { room, ids } = seed(1);
       await startMedium(room, ids[0]!);
       store.markReady(room, ids[0]!, 0);
+      goLive();
       // Mid-match it exists on the server but must not be broadcast: it grows
       // every round and every state change goes to every player.
       expect(toRoomState(room).summary).toBeNull();
@@ -339,6 +361,7 @@ describe("lockstep sequence", () => {
       for (let i = 0; i < 3; i++) {
         store.markReady(room, ids[0]!, i);
         store.markReady(room, ids[1]!, i);
+        goLive();
         const plan = room.match!.rounds[i]!;
         answers.push(plan.answer.id);
         // One right, one wrong, so both outcomes land in the summary.
@@ -369,6 +392,7 @@ describe("lockstep sequence", () => {
       const { room, ids } = seed(1);
       await startMedium(room, ids[0]!);
       store.markReady(room, ids[0]!, 0);
+      goLive();
       store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
       vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
       expect(room.summary!.rounds.length).toBeGreaterThan(0);
@@ -382,6 +406,7 @@ describe("lockstep sequence", () => {
       await startMedium(room, ids[0]!);
       for (let i = 0; i < 3; i++) {
         store.markReady(room, ids[0]!, i);
+        goLive();
         store.submitAnswer(room, ids[0]!, i, room.match!.rounds[i]!.answer.id);
         vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
       }
@@ -398,6 +423,7 @@ describe("lockstep sequence", () => {
     const before = states;
     await startMedium(room, ids[0]!);
     store.markReady(room, ids[0]!, 0);
+    goLive();
     store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
     expect(states).toBeGreaterThan(before + 2);
   });
@@ -422,6 +448,7 @@ async function startHeardle(
   });
   await store.startMatch(room, hostId);
   for (const player of room.players.values()) store.markReady(room, player.id, 0);
+  goLive();
 }
 
 const answerOf = (room: ReturnType<typeof seed>["room"]) =>
@@ -544,6 +571,7 @@ describe("heardle rounds", () => {
 
     vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 100);
     store.markReady(room, ids[0]!, 1);
+    goLive();
     expect(room.match!.index).toBe(1);
     expect(levelOf(room, ids[0]!)).toBe(0);
   });

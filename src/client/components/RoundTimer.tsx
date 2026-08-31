@@ -43,17 +43,19 @@ export function RoundTimer({
   idle?: boolean;
 }) {
   const { t } = useLang();
-  const [elapsedMs, setElapsedMs] = useState(0);
+  // Signed, because the Round goes live a beat before the clip starts and
+  // everything about that beat is the fact that it is still negative.
+  const [offsetMs, setOffsetMs] = useState(0);
 
   useEffect(() => {
     if (idle) {
-      setElapsedMs(0);
+      setOffsetMs(0);
       return;
     }
     let frame = 0;
     const tick = () => {
       const now = serverNow();
-      setElapsedMs(Math.min(Math.max(now - startAt, 0), windowMs));
+      setOffsetMs(Math.min(now - startAt, windowMs));
       if (now < deadlineAt) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -62,9 +64,14 @@ export function RoundTimer({
 
   // Heardle hands over an audible length; Quiz has none, and gets the
   // block-per-second bar it was designed around.
+  // Everything downstream counts from the clip, so the lead-in reads as a
+  // round that has not started spending its window yet.
+  const leadIn = !idle && offsetMs < 0;
+  const elapsedMs = Math.max(offsetMs, 0);
+
   const continuous = audibleMs !== undefined;
   const audible = audibleMs ?? clipMs;
-  const playingMusic = !idle && elapsedMs < audible;
+  const playingMusic = !idle && !leadIn && elapsedMs < audible;
   const remainingMs = windowMs - elapsedMs;
   const urgent = isFinalStretch(remainingMs, Boolean(idle));
 
@@ -95,15 +102,21 @@ export function RoundTimer({
               the playing stretch looking identical from across a table. */}
           <span
             aria-hidden
-            className={`inline-block h-2 w-2 shrink-0 ${
-              playingMusic ? "beat bg-accent" : "bg-grey-300"
+            className={`inline-block h-2 w-2 shrink-0 transition-colors ${
+              playingMusic
+                ? "beat bg-accent"
+                : leadIn
+                  ? "bg-accent"
+                  : "bg-grey-300"
             }`}
           />
           {idle
             ? t("loadingAudio")
-            : playingMusic
-              ? t("musicPlaying")
-              : t("silence")}
+            : leadIn
+              ? t("getReady")
+              : playingMusic
+                ? t("musicPlaying")
+                : t("silence")}
         </span>
         {/* The last few seconds are the most "now" thing on the screen, and red
             is what this design reserves for exactly that. The number changes

@@ -29,6 +29,7 @@ vi.mock("@/server/catalog", () => ({
 }));
 
 const { attachSocketServer } = await import("@/server/socket");
+const { ROOM_TUNING } = await import("@/server/rooms");
 
 /**
  * These tests exist because of a bug they would have caught: the server could
@@ -86,6 +87,16 @@ function nextState(s: Socket, match: (state: any) => boolean, ms = 4000) {
     s.on("room:state", onState);
   });
 }
+
+/**
+ * Sit out the lead-in, for real.
+ *
+ * These tests run against a live server on real timers, so the beat between the
+ * room going live and the clip starting has to actually elapse — answers are
+ * refused until it does. Only the tests that submit an answer pay for it.
+ */
+const goLive = () =>
+  new Promise((r) => setTimeout(r, ROOM_TUNING.LEAD_IN_MS + 50));
 
 describe("socket wiring", () => {
   it("creates a room and hands back a code, a player and a session", async () => {
@@ -154,6 +165,7 @@ describe("socket wiring", () => {
     guest.emit("round:ready", { index: loading.round.index });
 
     const playing = await nextState(host, (s) => s.phase === "playing");
+    await goLive();
     expect(playing.round.choices).toHaveLength(4);
     // The answer must not be on the wire before the reveal.
     expect(JSON.stringify(playing.round)).not.toContain("correct");
@@ -216,7 +228,10 @@ describe("socket wiring", () => {
       new Promise<any>((r) => sock.emit("round:answer", { index, guess: text }, r));
 
     /** Two clients in one room, playing the given mode, on an open round. */
-    async function playing(mode: "heardle" | "heardle-coop") {
+    // `waitOut` is false only for the tests that inspect what came over the
+    // wire without ever answering, which would otherwise pay the lead-in for
+    // nothing.
+    async function playing(mode: "heardle" | "heardle-coop", waitOut = true) {
       const host = await client();
       const guest = await client();
       const created = await emit<any>(host, "room:create", { name: "Host" });
@@ -235,11 +250,12 @@ describe("socket wiring", () => {
       host.emit("round:ready", { index: loading.round.index });
       guest.emit("round:ready", { index: loading.round.index });
       const open = await nextState(host, (s) => s.phase === "playing");
+      if (waitOut) await goLive();
       return { host, guest, round: open.round };
     }
 
     it("puts no options on the wire at all", async () => {
-      const { round } = await playing("heardle");
+      const { round } = await playing("heardle", false);
       expect(round.choices).toEqual([]);
       // Not the title, not the id — there is nothing to recognise.
       expect(JSON.stringify(round)).not.toContain(answerTitle(round));
