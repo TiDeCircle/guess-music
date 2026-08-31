@@ -30,7 +30,11 @@ export function RoomBrowser({
       <FieldLabel>{t("openRooms")}</FieldLabel>
 
       {rooms.length === 0 ? (
-        <p className="label mt-4 text-grey-500">{t("noOpenRooms")}</p>
+        // A single grey line under a rule reads as something that failed to
+        // load. A bounded, empty band reads as a room list with no rooms in it.
+        <p className="label mt-2 flex min-h-24 items-center border-b border-grey-300 text-pretty text-grey-500">
+          {t("noOpenRooms")}
+        </p>
       ) : (
         <ul className="mt-2">
           {rooms.map((room) => {
@@ -55,8 +59,13 @@ export function RoomBrowser({
                     {label}
                   </span>
                   <span className="label block text-grey-500">
-                    {t(`mode.${room.mode}` as StringKey)} · {room.playerCount}/
-                    {room.maxPlayers} · {playing ? t("inMatch") : t("waiting")}
+                    {t(`mode.${room.mode}` as StringKey)} ·{" "}
+                    {/* The count changes under the reader as people join, and a
+                        proportional 1 is narrower than a 4. */}
+                    <span className="numeric">
+                      {room.playerCount}/{room.maxPlayers}
+                    </span>{" "}
+                    · {playing ? t("inMatch") : t("waiting")}
                   </span>
                 </span>
 
@@ -65,7 +74,7 @@ export function RoomBrowser({
                   disabled={!canJoin || full}
                   onClick={() => onJoin(room.code)}
                   title={!canJoin ? t("needNameFirst") : undefined}
-                  className="label border border-ink px-4 py-2 transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:border-grey-300 disabled:text-grey-300"
+                  className="press label border border-ink px-4 py-2 enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:border-grey-300 disabled:text-grey-300"
                 >
                   {full ? t("roomFull") : t("join")}
                 </button>

@@ -50,7 +50,7 @@ export function ThemeToggle() {
       }}
       aria-label={t(next === "dark" ? "themeToDark" : "themeToLight")}
       title={t(next === "dark" ? "themeToDark" : "themeToLight")}
-      className="flex h-7 w-7 items-center justify-center border border-ink text-ink transition-colors hover:bg-ink hover:text-paper"
+      className="press flex h-10 w-10 items-center justify-center border border-ink text-ink hover:bg-ink hover:text-paper"
     >
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden focusable="false">
         <rect

@@ -79,6 +79,23 @@
   --color-accent: #ff3b30;
 }
 
+/**
+ * The keyboard's own cursor.
+ *
+ * Left to the browser this was whatever Chrome felt like drawing, which on the
+ * dark theme is a gamble on it having noticed `color-scheme`. An ink ring with
+ * a gap under it lands on the page rather than on the control, so it stays
+ * visible on a solid button and an outlined one alike, in either theme.
+ *
+ * This sits outside every layer, so it also reaches the fields that set
+ * `outline-none` for the mouse. Their accent underline still does the talking;
+ * the ring is what tells a keyboard where it is.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
 html,
 body {
   background: var(--color-paper);
@@ -115,6 +132,27 @@ body {
   .rule {
     border-color: var(--color-ink);
   }
+
+  /**
+   * A button that gives way slightly under a finger.
+   *
+   * Only ever on standalone buttons, never on a cell inside one of the
+   * `gap-px bg-ink` grids: those grids draw their dividing lines as the
+   * container's own background, so a cell shrinking away from its neighbours
+   * opens a black gash where the gap used to be.
+   *
+   * The properties are named rather than left as `all`, which would also
+   * animate width and colour on every unrelated change.
+   */
+  .press {
+    transition-property: color, background-color, border-color, scale;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .press:active:not(:disabled) {
+    scale: 0.96;
+  }
 }
 
 /* Respect the system setting rather than animating regardless. */
@@ -140,6 +178,28 @@ body {
   .option-row {
     grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
   }
+}
+
+/**
+ * The home screen assembling itself, one part at a time.
+ *
+ * A single container fading in reads as a page that was slow; the parts
+ * arriving in the order you read them reads as a page being set. The delays are
+ * applied at the call site because only it knows the reading order, and
+ * `backwards` holds each part hidden through its own delay rather than letting
+ * it flash before its turn.
+ *
+ * The reduced-motion rule above collapses this to nothing.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
+.rise {
+  animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) backwards;
 }
 
 /**

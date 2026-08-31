@@ -13,7 +13,7 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "solid" | "outline" }) {
   const base =
-    "label w-full border border-ink px-6 py-4 transition-colors disabled:cursor-not-allowed disabled:border-grey-300 disabled:bg-paper disabled:text-grey-300";
+    "press label w-full border border-ink px-6 py-4 disabled:cursor-not-allowed disabled:border-grey-300 disabled:bg-paper disabled:text-grey-300";
   const skin =
     variant === "solid"
       ? "bg-ink text-paper hover:bg-paper hover:text-ink"

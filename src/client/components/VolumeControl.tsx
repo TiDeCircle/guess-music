@@ -22,12 +22,14 @@ export function VolumeControl({
   const atMin = step <= 0;
   const atMax = step >= VOLUME_STEPS;
 
+  // Forty across and forty down. A minus sign is a small thing to aim at, and
+  // this one gets aimed at mid-round, one-handed, on a phone.
   const button =
-    "px-2 py-1 leading-none transition-colors disabled:cursor-not-allowed disabled:text-grey-300";
+    "press flex h-10 w-10 items-center justify-center leading-none disabled:cursor-not-allowed disabled:text-grey-300";
 
   return (
     <div
-      className="label flex items-center border border-ink"
+      className="label flex items-stretch border border-ink"
       role="group"
       aria-label={t("volume")}
     >
@@ -45,7 +47,7 @@ export function VolumeControl({
           that level is a nice idea that makes the control ambiguous to screen
           readers for no real gain over two taps. */}
       <div
-        className="flex items-center gap-px px-1"
+        className="flex items-center gap-px px-1.5"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={VOLUME_STEPS}

@@ -29,6 +29,11 @@ export const STRINGS = {
   roomCode: { th: "รหัสห้อง", en: "Room code" },
   codePlaceholder: { th: "รหัส 4 ตัว", en: "4 letters" },
 
+  statModes: { th: "โหมด", en: "Modes" },
+  statPlaylists: { th: "เพลย์ลิสต์", en: "Playlists" },
+  statArtists: { th: "ศิลปิน", en: "Artists" },
+  statSongs: { th: "ชื่อเพลงในคลัง", en: "Songs indexed" },
+
   lobby: { th: "ห้องรอ", en: "Lobby" },
   openRooms: { th: "ห้องที่เปิดอยู่", en: "Open rooms" },
   noOpenRooms: {

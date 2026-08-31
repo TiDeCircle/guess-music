@@ -28,9 +28,12 @@ export function Shell({
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-ink">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 md:px-8">
-          <span className="label font-bold">{t("appName")}</span>
+          <span className="label truncate font-bold">{t("appName")}</span>
 
-          <div className="flex items-center gap-4 md:gap-6">
+          {/* Tight on a phone by necessity: three forty-pixel controls plus the
+              status mark do not fit 390px at a comfortable gap, and shrinking
+              the controls again is what created the hit-area problem. */}
+          <div className="flex items-center gap-2 md:gap-6">
             <VolumeControl step={volumeStep} onChange={onVolumeChange} />
 
             <span className="label flex items-center gap-2 text-grey-500">
@@ -49,14 +52,16 @@ export function Shell({
 
             <ThemeToggle />
 
-            <div className="label flex items-center gap-0 border border-ink">
+            {/* Every control on this row is forty tall, which fixes the hit
+                areas and lines their baselines up at the same time. */}
+            <div className="label flex items-stretch border border-ink">
               {LANGS.map((code) => (
                 <button
                   key={code}
                   type="button"
                   onClick={() => setLang(code)}
                   aria-pressed={lang === code}
-                  className={`px-2 py-1 transition-colors ${
+                  className={`press flex h-10 w-10 items-center justify-center ${
                     lang === code
                       ? "bg-ink text-paper"
                       : "bg-paper text-ink hover:bg-grey-100"
@@ -70,7 +75,8 @@ export function Shell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-8 md:px-8 md:py-12">
+      {/* A column, so a screen that asks to fill the field can. */}
+      <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 py-8 md:px-8 md:py-12">
         {children}
       </main>
     </div>
