@@ -53,6 +53,9 @@
   --duration-beat: 640ms;    /* one pulse of the mark that says sound is on */
   --duration-sweep: 520ms;   /* a cell being marked as somebody's answer lands */
   --duration-flip: 320ms;    /* a player moving past another in the standings */
+  /* One revolution of the record. 1.8s is 33⅓ rpm, which is the speed the
+     thing on screen would actually be turning at. */
+  --duration-revolution: 1800ms;
 
   --default-transition-duration: var(--duration-state);
   --default-transition-timing-function: var(--ease-out);
@@ -417,4 +420,29 @@ body {
 
 .sweep {
   animation: sweep var(--duration-sweep) var(--ease-out) forwards;
+}
+
+/**
+ * The record turning.
+ *
+ * Linear, because it is constant motion rather than something arriving or
+ * settling — every other curve in this file would make a spinning disc appear
+ * to speed up and slow down once per revolution.
+ *
+ * Paused rather than removed when the music stops, so it rests at the angle it
+ * reached. `will-change` is warranted here in the way it rarely is: this runs
+ * continuously for the length of a clip.
+ *
+ * Reduced motion collapses it to a single instant iteration, which lands on
+ * 360° — the same disc, sitting still.
+ */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin var(--duration-revolution) linear infinite;
+  will-change: transform;
 }

@@ -12,6 +12,7 @@ import { RoundDots } from "./RoundDots";
 import { PlayerStrip } from "./PlayerStrip";
 import { SongSearch } from "./SongSearch";
 import { UnlockLadder } from "./UnlockLadder";
+import { VinylRecord } from "./VinylRecord";
 import { FieldLabel } from "./Shell";
 
 /**
@@ -105,6 +106,32 @@ export function PlayScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [round, room, armed, picked, playerId, onAnswer]);
 
+  /**
+   * Whether the clip is audible, for the record.
+   *
+   * Two timeouts rather than a frame loop: this changes twice in a Round, and a
+   * requestAnimationFrame running the length of a clip to flip one boolean
+   * would be a second animation loop on a screen that already has one.
+   */
+  const audibleMs =
+    round === null
+      ? 0
+      : round.stagesMs.length > 0
+        ? (round.stagesMs[level] ?? round.clipMs)
+        : round.clipMs;
+  const [sounding, setSounding] = useState(false);
+  useEffect(() => {
+    if (!round) return;
+    const now = serverNow();
+    const startsIn = round.startAt - now;
+    const endsIn = round.startAt + audibleMs - now;
+    setSounding(startsIn <= 0 && endsIn > 0);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (startsIn > 0) timers.push(setTimeout(() => setSounding(true), startsIn));
+    if (endsIn > 0) timers.push(setTimeout(() => setSounding(false), endsIn));
+    return () => timers.forEach(clearTimeout);
+  }, [round, audibleMs, serverNow]);
+
   if (!round) return null;
 
   const mode = MODES[room.config.mode];
@@ -125,7 +152,7 @@ export function PlayScreen({
     // height; nothing here was claiming it.
     <div key={round.index} className="enter flex flex-1 flex-col gap-8">
       <div className="grid flex-1 gap-8 md:grid-cols-12">
-        <section className="md:col-span-4">
+        <section className="flex flex-col md:col-span-4">
           <FieldLabel>
             {t("round")} {round.index + 1} / {round.total}
           </FieldLabel>
@@ -160,6 +187,18 @@ export function PlayScreen({
 
           <div className="mt-8">
             <RoundDots total={round.total} current={round.index} history={history} />
+          </div>
+
+          {/* Turning while there is sound, still while there is not. Takes
+              whatever height the column has left rather than a fixed size, so
+              it fills the space under the dots instead of leaving it empty —
+              capped, because a record the height of a desktop window is a
+              poster, not a detail. Hidden on a phone, where that space is the
+              board's and the round has to fit above the fold. */}
+          <div className="mt-8 hidden flex-1 items-start justify-center md:flex">
+            <div className="aspect-square w-full max-w-[16rem]">
+              <VinylRecord spinning={sounding} />
+            </div>
           </div>
 
           {done && (

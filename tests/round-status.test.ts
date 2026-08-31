@@ -6,6 +6,7 @@ import {
   countInSeconds,
   isCountIn,
   isFinalStretch,
+  isSounding,
 } from "@/client/roundStatus";
 
 const player = (id: string, connected = true): Player => ({
@@ -117,5 +118,34 @@ describe("countInSeconds", () => {
     expect(countInSeconds(3_000, 1)).toBe(3);
     expect(countInSeconds(3_000, 999)).toBe(3);
     expect(countInSeconds(3_000, 1_001)).toBe(2);
+  });
+});
+
+describe("isSounding", () => {
+  it("is silent through the lead-in", () => {
+    expect(isSounding(1_000, 10_000, 0)).toBe(false);
+    expect(isSounding(1_000, 10_000, 999)).toBe(false);
+  });
+
+  it("starts exactly when the clip does", () => {
+    expect(isSounding(1_000, 10_000, 1_000)).toBe(true);
+  });
+
+  it("runs to the end of the audible stretch and no further", () => {
+    expect(isSounding(1_000, 10_000, 10_999)).toBe(true);
+    expect(isSounding(1_000, 10_000, 11_000)).toBe(false);
+    expect(isSounding(1_000, 10_000, 20_000)).toBe(false);
+  });
+
+  // Heardle's first rung is a single second, and the record has to stop for
+  // the rest of the round rather than spin through the silence a player is
+  // deciding in.
+  it("follows a short unlocked stretch rather than the whole clip", () => {
+    expect(isSounding(0, 1_000, 500)).toBe(true);
+    expect(isSounding(0, 1_000, 1_500)).toBe(false);
+  });
+
+  it("is silent when nothing is audible at all", () => {
+    expect(isSounding(0, 0, 0)).toBe(false);
   });
 });

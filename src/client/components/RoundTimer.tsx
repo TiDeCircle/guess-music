@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/client/i18n";
-import { isFinalStretch } from "@/client/roundStatus";
+import { isFinalStretch, isSounding } from "@/client/roundStatus";
 
 /**
  * The Round clock.
@@ -71,7 +71,10 @@ export function RoundTimer({
 
   const continuous = audibleMs !== undefined;
   const audible = audibleMs ?? clipMs;
-  const playingMusic = !idle && !leadIn && elapsedMs < audible;
+  // Shared with the record beside the board, so the mark here and the disc
+  // there can never disagree about whether the music is on. `offsetMs` is
+  // already now-minus-start, which makes the clip's own start zero.
+  const playingMusic = !idle && isSounding(0, audible, offsetMs);
   const remainingMs = windowMs - elapsedMs;
   const urgent = isFinalStretch(remainingMs, Boolean(idle));
 

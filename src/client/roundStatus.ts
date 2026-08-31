@@ -82,3 +82,19 @@ export function isCountIn(roundIndex: number, startAt: number, now: number): boo
 export function countInSeconds(startAt: number, now: number): number {
   return Math.max(Math.ceil((startAt - now) / 1000), 1);
 }
+
+/**
+ * Whether sound is coming out right now.
+ *
+ * One expression, used by both things that report it — the mark beside the
+ * label and the record beside the board — because two components computing
+ * "is the music on" separately is two components that will eventually
+ * disagree on screen at the same time.
+ *
+ * `audibleMs` is how much of the clip this player has, which in Heardle is
+ * whatever they have bought rather than the whole thing.
+ */
+export function isSounding(startAt: number, audibleMs: number, now: number): boolean {
+  const elapsed = now - startAt;
+  return elapsed >= 0 && elapsed < audibleMs;
+}
