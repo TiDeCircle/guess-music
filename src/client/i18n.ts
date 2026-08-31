@@ -30,6 +30,25 @@ export const STRINGS = {
   codePlaceholder: { th: "รหัส 4 ตัว", en: "4 letters" },
 
   lobby: { th: "ห้องรอ", en: "Lobby" },
+  openRooms: { th: "ห้องที่เปิดอยู่", en: "Open rooms" },
+  noOpenRooms: {
+    th: "ยังไม่มีห้องที่เปิดอยู่ — สร้างห้องแรกได้เลย",
+    en: "No open rooms yet — make the first one",
+  },
+  join: { th: "เข้า", en: "Join" },
+  roomFull: { th: "เต็ม", en: "Full" },
+  inMatch: { th: "กำลังเล่น", en: "Playing" },
+  waiting: { th: "รอเริ่ม", en: "Waiting" },
+  needNameFirst: { th: "ใส่ชื่อก่อนถึงจะเข้าห้องได้", en: "Enter a name first" },
+  lockRoom: { th: "ซ่อนห้องจากรายการ", en: "Hide from room list" },
+  lockedHint: {
+    th: "ห้องนี้ไม่แสดงในหน้าแรก เข้าได้เฉพาะคนที่มีรหัส",
+    en: "Not shown on the home page — only people with the code can join",
+  },
+  listedHint: {
+    th: "ห้องนี้แสดงในหน้าแรก ใครก็กดเข้าได้",
+    en: "Shown on the home page — anyone can join",
+  },
   players: { th: "ผู้เล่น", en: "Players" },
   host: { th: "หัวห้อง", en: "Host" },
   you: { th: "คุณ", en: "You" },

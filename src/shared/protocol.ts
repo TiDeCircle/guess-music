@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { RoomState } from "./types";
+import type { RoomListing, RoomState } from "./types";
 
 /**
  * The wire contract. Everything arriving from a client is parsed with these
@@ -72,6 +72,8 @@ export const configSchema = z.object({
 
 export const readySchema = z.object({ index: z.number().int().min(0) });
 
+export const lockSchema = z.object({ locked: z.boolean() });
+
 export const answerSchema = z.object({
   index: z.number().int().min(0),
   choiceId: z.string().min(1).max(64),
@@ -100,6 +102,15 @@ export interface ClientToServerEvents {
    * changed without everyone leaving and swapping a new room code.
    */
   "match:lobby": () => void;
+  /** Host hides the room from the browser, or puts it back. */
+  "room:lock": (payload: unknown) => void;
+  /**
+   * Ask to receive the public room list, and to keep receiving it as it
+   * changes. Clients on the home screen watch; everyone else does not, so a
+   * room in progress costs nothing.
+   */
+  "rooms:watch": () => void;
+  "rooms:unwatch": () => void;
   /** Client reports its audio is buffered for this Round. */
   "round:ready": (payload: unknown) => void;
   "round:answer": (payload: unknown) => void;
@@ -120,4 +131,6 @@ export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
   "room:closed": (reason: string) => void;
   "room:error": (error: { code: string; message: string }) => void;
+  /** The public room list, pushed whenever it changes. */
+  "rooms:listing": (rooms: RoomListing[]) => void;
 }

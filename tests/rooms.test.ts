@@ -39,6 +39,7 @@ beforeEach(() => {
       states++;
     },
     onClosed: () => {},
+    onListingChanged: () => {},
   });
 });
 

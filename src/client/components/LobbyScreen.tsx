@@ -24,6 +24,7 @@ export function LobbyScreen({
   audioUnlocked,
   onUnlockAudio,
   onConfig,
+  onLock,
   onStart,
   onLeave,
   starting,
@@ -33,6 +34,7 @@ export function LobbyScreen({
   audioUnlocked: boolean;
   onUnlockAudio: () => void;
   onConfig: (config: MatchConfig) => void;
+  onLock: (locked: boolean) => void;
   onStart: () => void;
   onLeave: () => void;
   starting: boolean;
@@ -69,6 +71,36 @@ export function LobbyScreen({
         <p className="label mt-4 text-grey-500">
           {copied ? t("copied") : t("shareHint")}
         </p>
+
+        {/* Locking hides the room from the home page without sealing it, so the
+            code a host already sent still works. */}
+        <div className="mt-6 border-t border-ink pt-3">
+          <label className="flex cursor-pointer items-center justify-between gap-4">
+            <span className="label">{t("lockRoom")}</span>
+            <input
+              type="checkbox"
+              checked={room.locked}
+              disabled={!isHost}
+              onChange={(e) => onLock(e.target.checked)}
+              className="sr-only"
+            />
+            <span
+              aria-hidden
+              className={`flex h-6 w-11 shrink-0 items-center border border-ink p-px transition-colors ${
+                room.locked ? "bg-ink" : "bg-paper"
+              } ${isHost ? "" : "opacity-40"}`}
+            >
+              <span
+                className={`h-full w-1/2 transition-transform ${
+                  room.locked ? "translate-x-full bg-paper" : "bg-ink"
+                }`}
+              />
+            </span>
+          </label>
+          <p className="label mt-2 text-grey-500">
+            {room.locked ? t("lockedHint") : t("listedHint")}
+          </p>
+        </div>
 
         <div className="mt-10">
           <FieldLabel>

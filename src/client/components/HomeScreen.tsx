@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import type { RoomListing } from "@/shared/types";
 import { useLang } from "@/client/i18n";
 import { NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from "@/shared/protocol";
 import { Button } from "./Button";
 import { FieldLabel } from "./Shell";
+import { RoomBrowser } from "./RoomBrowser";
 
 export function HomeScreen({
   onCreate,
   onJoin,
+  rooms,
   busy,
 }: {
   onCreate: (name: string) => void;
   onJoin: (code: string, name: string) => void;
+  rooms: RoomListing[];
   busy: boolean;
 }) {
   const { t } = useLang();
@@ -81,6 +85,16 @@ export function HomeScreen({
             {t("joinRoom")}
           </Button>
         </div>
+      </section>
+
+      {/* Below the fold on a phone, which is right: someone arriving with a code
+          from a friend should not have to scroll past strangers' rooms. */}
+      <section className="md:col-span-12">
+        <RoomBrowser
+          rooms={rooms}
+          canJoin={trimmedName.length > 0 && !busy}
+          onJoin={(code) => onJoin(code, trimmedName)}
+        />
       </section>
     </div>
   );

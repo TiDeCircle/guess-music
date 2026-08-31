@@ -142,6 +142,21 @@ export type MatchSummary = {
   rounds: MatchSummaryRound[];
 };
 
+/**
+ * A Room as it appears in the browser on the home screen.
+ *
+ * Deliberately without player names: the site is public, and a name is not what
+ * anyone picks a room by. The code, how full it is, and what it is playing are.
+ */
+export type RoomListing = {
+  code: string;
+  playerCount: number;
+  maxPlayers: number;
+  phase: RoomPhase;
+  source: SongSource;
+  difficulty: DifficultyId;
+};
+
 export type RoomState = {
   code: string;
   phase: RoomPhase;
@@ -157,4 +172,10 @@ export type RoomState = {
   readyPlayerIds: string[];
   /** The songs just played. Present only while phase is finished. */
   summary: MatchSummary | null;
+  /**
+   * A locked Room is kept out of the public browser. The code still works, so
+   * it is "unlisted" rather than sealed — the host can still invite whoever
+   * they meant to invite.
+   */
+  locked: boolean;
 };

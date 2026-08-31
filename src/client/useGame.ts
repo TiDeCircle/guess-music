@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { MatchConfig, RoomState } from "@/shared/types";
+import type { MatchConfig, RoomListing, RoomState } from "@/shared/types";
 import type {
   Ack,
   ClientToServerEvents,
@@ -102,6 +102,7 @@ export function useGame() {
   const [history, setHistory] = useState<RoundOutcome[]>([]);
   /** Track id currently being replayed on the recap screen, if any. */
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [roomList, setRoomList] = useState<RoomListing[]>([]);
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
@@ -167,6 +168,7 @@ export function useGame() {
 
     socket.on("disconnect", () => setStatus("offline"));
     socket.on("room:state", (next) => setRoom(next));
+    socket.on("rooms:listing", (rooms) => setRoomList(rooms));
     socket.on("room:error", (e) => setError(e.message));
     socket.on("room:closed", () => {
       writeSession(null);
@@ -179,6 +181,25 @@ export function useGame() {
       audioRef.current?.dispose();
     };
   }, []);
+
+  /**
+   * Watch the public room list only while sitting on the home screen. A room in
+   * progress has no use for it, and a table of every room in the building is
+   * not something to keep pushing at eight phones mid-round.
+   */
+  const browsing = room === null && status === "online";
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    if (!browsing) {
+      socket.emit("rooms:unwatch");
+      return;
+    }
+    socket.emit("rooms:watch");
+    return () => {
+      socket.emit("rooms:unwatch");
+    };
+  }, [browsing]);
 
   // ------------------------------------------------------------------- audio
   //
@@ -286,6 +307,11 @@ export function useGame() {
     });
   }, []);
 
+  /** Host only: hide the room from the browser, or put it back. */
+  const setLocked = useCallback((locked: boolean) => {
+    socketRef.current?.emit("room:lock", { locked });
+  }, []);
+
   const setConfig = useCallback((config: MatchConfig) => {
     socketRef.current?.emit("room:config", config);
   }, []);
@@ -365,6 +391,8 @@ export function useGame() {
     createRoom,
     joinRoom,
     setConfig,
+    setLocked,
+    roomList,
     startMatch,
     returnToLobby,
     answer,

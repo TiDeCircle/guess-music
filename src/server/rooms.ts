@@ -2,6 +2,7 @@ import { randomUUID, randomInt } from "node:crypto";
 import type {
   DifficultyId,
   MatchSummary,
+  RoomListing,
   MatchConfig,
   Player,
   RevealView,
@@ -93,6 +94,8 @@ export type Room = {
   pool: Track[];
   /** Built up Round by Round; survives the Match so the recap can show it. */
   summary: MatchSummary | null;
+  /** Hidden from the public browser. The code still lets people in. */
+  locked: boolean;
   emptyAt: number | null;
   timer: NodeJS.Timeout | null;
 };
@@ -102,6 +105,11 @@ export type RoomEvents = {
   onState: (room: Room) => void;
   /** Called when a Room is torn down. */
   onClosed: (code: string, reason: string) => void;
+  /**
+   * Called when the public room list may have changed — a room appearing or
+   * vanishing, filling up, starting a match, or being locked.
+   */
+  onListingChanged: () => void;
 };
 
 export class RoomError extends Error {
@@ -162,10 +170,12 @@ export class RoomStore {
       recentTrackIds: [],
       pool: [],
       summary: null,
+      locked: false,
       emptyAt: null,
       timer: null,
     };
     this.rooms.set(code, room);
+    this.events.onListingChanged();
     return { room, player };
   }
 
@@ -202,6 +212,7 @@ export class RoomStore {
     const player = makePlayer(name, socketId);
     room.players.set(player.id, player);
     room.emptyAt = null;
+    this.events.onListingChanged();
     return { room, player };
   }
 
@@ -281,6 +292,7 @@ export class RoomStore {
     this.clearTimer(room);
     this.rooms.delete(room.code);
     this.events.onClosed(room.code, reason);
+    this.events.onListingChanged();
   }
 
   private clearTimer(room: Room): void {
@@ -297,6 +309,44 @@ export class RoomStore {
     }
     room.config = config;
     this.events.onState(room);
+    this.events.onListingChanged();
+  }
+
+  /**
+   * Locking hides a Room from the browser without sealing it: the code still
+   * works, so a host who wanted a private game can still invite the people they
+   * meant to.
+   */
+  setLocked(room: Room, playerId: string, locked: boolean): void {
+    this.requireHost(room, playerId);
+    room.locked = locked;
+    this.events.onState(room);
+    this.events.onListingChanged();
+  }
+
+  /** The Rooms a stranger is allowed to see. */
+  listRooms(): RoomListing[] {
+    const out: RoomListing[] = [];
+    for (const room of this.rooms.values()) {
+      if (room.locked) continue;
+      const playerCount = [...room.players.values()].filter((p) => p.connected).length;
+      // An empty room is on its way out; listing it only invites a click that
+      // lands nowhere.
+      if (playerCount === 0) continue;
+      out.push({
+        code: room.code,
+        playerCount,
+        maxPlayers: MAX_PLAYERS,
+        phase: room.phase,
+        source: room.config.source,
+        difficulty: room.config.difficulty,
+      });
+    }
+    // Rooms still waiting first, then the fullest — what a newcomer wants.
+    return out.sort((a, b) => {
+      const waiting = (r: RoomListing) => (r.phase === "lobby" ? 0 : 1);
+      return waiting(a) - waiting(b) || b.playerCount - a.playerCount;
+    });
   }
 
   private requireHost(room: Room, playerId: string): void {
@@ -370,6 +420,7 @@ export class RoomStore {
 
     room.timer = setTimeout(() => this.beginRound(room), AUDIO_READY_TIMEOUT_MS);
     this.events.onState(room);
+    this.events.onListingChanged();
   }
 
   /** A client reports its audio is buffered for the Round it is looking at. */
@@ -519,6 +570,7 @@ export class RoomStore {
     room.phase = "finished";
     room.match = null;
     this.events.onState(room);
+    this.events.onListingChanged();
   }
 
   /** Host sends everyone back to the lobby after a Match. */
@@ -530,6 +582,7 @@ export class RoomStore {
     room.reveal = null;
     room.summary = null;
     this.events.onState(room);
+    this.events.onListingChanged();
   }
 }
 
@@ -582,6 +635,7 @@ export function toRoomState(room: Room): RoomState {
     config: room.config,
     round,
     reveal: room.reveal,
+    locked: room.locked,
     answeredPlayerIds: match ? [...match.answers.keys()] : [],
     readyPlayerIds: match ? [...match.ready] : [],
     // Only at the end: it grows all match long and every state change is

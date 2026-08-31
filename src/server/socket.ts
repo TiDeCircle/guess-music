@@ -3,6 +3,7 @@ import { Server, type Socket } from "socket.io";
 import {
   answerSchema,
   configSchema,
+  lockSchema,
   createRoomSchema,
   joinRoomSchema,
   readySchema,
@@ -32,12 +33,29 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
   const bindings = new Map<string, SocketBinding>();
 
+  /**
+   * The list is pushed rather than polled, but a single join can fire several
+   * changes in a row, so the broadcast is collapsed into one tick.
+   */
+  let listingTimer: NodeJS.Timeout | null = null;
+  function broadcastListing(): void {
+    if (listingTimer) return;
+    listingTimer = setTimeout(() => {
+      listingTimer = null;
+      io.to(BROWSER_CHANNEL).emit("rooms:listing", store.listRooms());
+    }, 150);
+    listingTimer.unref?.();
+  }
+
   const store = new RoomStore({
     onState(room) {
       io.to(roomChannel(room.code)).emit("room:state", toRoomState(room));
     },
     onClosed(code, reason) {
       io.to(roomChannel(code)).emit("room:closed", reason);
+    },
+    onListingChanged() {
+      broadcastListing();
     },
   });
   store.start();
@@ -108,6 +126,29 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       });
     });
 
+    socket.on("rooms:watch", () => {
+      void socket.join(BROWSER_CHANNEL);
+      // Answer straight away rather than leaving the home screen blank until
+      // something in some other room happens to change.
+      socket.emit("rooms:listing", store.listRooms());
+    });
+
+    socket.on("rooms:unwatch", () => {
+      void socket.leave(BROWSER_CHANNEL);
+    });
+
+    socket.on("room:lock", (payload) => {
+      const ctx = contextFor(socket);
+      if (!ctx) return;
+      const parsed = lockSchema.safeParse(payload);
+      if (!parsed.success) return;
+      try {
+        store.setLocked(ctx.room, ctx.playerId, parsed.data.locked);
+      } catch (err) {
+        fail(socket, "lock", messageFor(err));
+      }
+    });
+
     socket.on("match:lobby", () => {
       const ctx = contextFor(socket);
       if (!ctx) return;
@@ -142,7 +183,10 @@ export function attachSocketServer(httpServer: HttpServer): Server {
     socket.on("disconnect", () => {
       bindings.delete(socket.id);
       const room = store.disconnect(socket.id);
-      if (room) pushState(room);
+      if (room) {
+        pushState(room);
+        broadcastListing();
+      }
     });
   });
 
@@ -171,6 +215,9 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 }
 
 const roomChannel = (code: string) => `room:${code}`;
+
+/** Everyone sitting on the home screen watching the room list. */
+const BROWSER_CHANNEL = "rooms:browser";
 
 function messageFor(err: unknown): string {
   if (err instanceof RoomError) return err.message;

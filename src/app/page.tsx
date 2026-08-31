@@ -58,6 +58,7 @@ export default function Page() {
 
       {!game.room && (
         <HomeScreen
+          rooms={game.roomList}
           busy={joining || game.status !== "online"}
           onCreate={async (name) => {
             setJoining(true);
@@ -83,6 +84,7 @@ export default function Page() {
           audioUnlocked={game.audioUnlocked}
           onUnlockAudio={() => void game.unlockAudio()}
           onConfig={game.setConfig}
+          onLock={game.setLocked}
           onStart={() => {
             setStarting(true);
             game.startMatch();

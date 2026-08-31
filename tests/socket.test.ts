@@ -193,6 +193,103 @@ describe("socket wiring", () => {
     expect(lobby.config.difficulty).toBe("extreme");
   });
 
+  describe("room browser", () => {
+    /** Wait for a listing that satisfies a predicate. */
+    function nextListing(s: Socket, match: (rooms: any[]) => boolean, ms = 4000) {
+      return new Promise<any[]>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          s.off("rooms:listing", onList);
+          reject(new Error("timed out waiting for listing"));
+        }, ms);
+        const onList = (rooms: any[]) => {
+          if (!match(rooms)) return;
+          clearTimeout(timer);
+          s.off("rooms:listing", onList);
+          resolve(rooms);
+        };
+        s.on("rooms:listing", onList);
+      });
+    }
+
+    it("answers a watcher immediately rather than leaving them blank", async () => {
+      const watcher = await client();
+      const first = new Promise<any[]>((r) => watcher.once("rooms:listing", r));
+      watcher.emit("rooms:watch");
+      expect(Array.isArray(await first)).toBe(true);
+    });
+
+    it("shows a new room to someone watching, without names", async () => {
+      const watcher = await client();
+      watcher.emit("rooms:watch");
+      const host = await client();
+      const created = await emit<any>(host, "room:create", { name: "SecretName" });
+
+      const rooms = await nextListing(watcher, (rs) =>
+        rs.some((r) => r.code === created.data.code),
+      );
+      const mine = rooms.find((r) => r.code === created.data.code);
+      expect(mine.playerCount).toBe(1);
+      expect(mine.phase).toBe("lobby");
+      // The site is public; a listing is not the place for who is in the room.
+      expect(JSON.stringify(mine)).not.toContain("SecretName");
+    });
+
+    it("takes a locked room off the list but still lets a code in", async () => {
+      const watcher = await client();
+      watcher.emit("rooms:watch");
+      const host = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      await nextListing(watcher, (rs) => rs.some((r) => r.code === created.data.code));
+
+      host.emit("room:lock", { locked: true });
+      await nextListing(watcher, (rs) => !rs.some((r) => r.code === created.data.code));
+
+      // Unlisted, not sealed: whoever was already given the code still gets in.
+      const guest = await client();
+      const joined = await emit<any>(guest, "room:join", {
+        code: created.data.code,
+        name: "Guest",
+      });
+      expect(joined.ok).toBe(true);
+    });
+
+    it("puts an unlocked room back on the list", async () => {
+      const watcher = await client();
+      watcher.emit("rooms:watch");
+      const host = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      host.emit("room:lock", { locked: true });
+      await nextListing(watcher, (rs) => !rs.some((r) => r.code === created.data.code));
+      host.emit("room:lock", { locked: false });
+      await nextListing(watcher, (rs) => rs.some((r) => r.code === created.data.code));
+    });
+
+    it("only lets the host lock the room", async () => {
+      const host = await client();
+      const guest = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
+      const refused = new Promise<any>((r) => guest.once("room:error", r));
+      guest.emit("room:lock", { locked: true });
+      expect((await refused).message).toMatch(/host/);
+    });
+
+    it("stops pushing the list once a watcher stops watching", async () => {
+      const watcher = await client();
+      watcher.emit("rooms:watch");
+      await new Promise<any[]>((r) => watcher.once("rooms:listing", r));
+      watcher.emit("rooms:unwatch");
+      await new Promise((r) => setTimeout(r, 100));
+
+      let pushed = false;
+      watcher.on("rooms:listing", () => (pushed = true));
+      const host = await client();
+      await emit<any>(host, "room:create", { name: "Host" });
+      await new Promise((r) => setTimeout(r, 500));
+      expect(pushed).toBe(false);
+    });
+  });
+
   it("ignores a lobby request from someone who is not the host", async () => {
     const host = await client();
     const guest = await client();
