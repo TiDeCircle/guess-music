@@ -30,46 +30,51 @@ export function Shell({
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 md:px-8">
           <span className="label truncate font-bold">{t("appName")}</span>
 
-          {/* Tight on a phone by necessity: three forty-pixel controls plus the
-              status mark do not fit 390px at a comfortable gap, and shrinking
-              the controls again is what created the hit-area problem. */}
-          <div className="flex items-center gap-2 md:gap-6">
-            <VolumeControl step={volumeStep} onChange={onVolumeChange} />
-
-            <span className="label flex items-center gap-2 text-grey-500">
+          <div className="flex items-center gap-3 md:gap-6">
+            {/* Nothing at all while the connection is healthy. The mark that
+                used to sit here said "fine" by being a small black square with
+                no label and no frame, which next to three bordered controls
+                read as debris rather than as an indicator. Absence is the
+                better signal; only trouble gets a cell — and being the only
+                live region on the page, it announces itself when it appears
+                instead of competing with a hidden one reading the raw enum. */}
+            {status !== "online" && (
               <span
-                aria-hidden
-                className={`inline-block h-2 w-2 ${
-                  status === "online" ? "bg-ink" : "bg-accent"
-                }`}
-              />
-              {/* Only named when something is wrong; a healthy connection is
-                  just the mark, with no label taking up the grid. */}
-              {status !== "online" &&
-                t(status === "connecting" ? "connecting" : "offline")}
-              <span className="sr-only">{status}</span>
-            </span>
+                role="status"
+                className="label flex h-10 items-center gap-2 border border-accent px-3 text-accent"
+              >
+                <span aria-hidden className="inline-block h-2 w-2 bg-accent" />
+                {t(status === "connecting" ? "connecting" : "offline")}
+              </span>
+            )}
+            {/* One strip, hairlines between the controls — the same thing the
+                option rows, the player strip and the answer grid all do. Three
+                separate boxes was the one place in the design that fragmented,
+                and it was also why the theme toggle ended up two pixels shorter
+                than its neighbours: its border was its own, theirs was their
+                container's. One frame, and they cannot disagree. */}
+            <div className="flex items-stretch divide-x divide-ink border border-ink">
+              <VolumeControl step={volumeStep} onChange={onVolumeChange} />
 
-            <ThemeToggle />
+              <ThemeToggle />
 
-            {/* Every control on this row is forty tall, which fixes the hit
-                areas and lines their baselines up at the same time. */}
-            <div className="label flex items-stretch border border-ink">
-              {LANGS.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => setLang(code)}
-                  aria-pressed={lang === code}
-                  className={`press flex h-10 w-10 items-center justify-center ${
-                    lang === code
-                      ? "bg-ink text-paper"
-                      : "bg-paper text-ink hover:bg-grey-100"
-                  }`}
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
+              <div className="label flex items-stretch divide-x divide-ink">
+                {LANGS.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLang(code)}
+                    aria-pressed={lang === code}
+                    className={`press flex h-10 w-10 items-center justify-center ${
+                      lang === code
+                        ? "bg-ink text-paper"
+                        : "bg-paper text-ink hover:bg-grey-100"
+                    }`}
+                  >
+                    {code.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -12,8 +12,8 @@ import {
 /**
  * Paper or ink.
  *
- * A square with one half filled, which is the whole palette drawn at 14 pixels
- * and needs no label in either language. It is one button rather than a pair
+ * A square with one half filled, which is the whole palette drawn at sixteen
+ * pixels and needs no label in either language. It is one button rather than a pair
  * like the language switch: there is no third option worth a cell, and the page
  * itself already shows which side you are on.
  */
@@ -50,9 +50,11 @@ export function ThemeToggle() {
       }}
       aria-label={t(next === "dark" ? "themeToDark" : "themeToLight")}
       title={t(next === "dark" ? "themeToDark" : "themeToLight")}
-      className="press flex h-10 w-10 items-center justify-center border border-ink text-ink hover:bg-ink hover:text-paper"
+      // No border of its own: it is one cell of the header strip in Shell,
+      // which draws the frame and the hairlines between controls.
+      className="press flex h-10 w-10 items-center justify-center text-ink hover:bg-grey-100"
     >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden focusable="false">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden focusable="false">
         <rect
           x="0.5"
           y="0.5"
