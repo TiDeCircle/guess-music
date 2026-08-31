@@ -88,28 +88,6 @@ export function HomeScreen({
           >
             {t("tagline")}
           </p>
-
-          {/* What used to be half a page of nothing. A Swiss poster can carry
-              empty space, but not empty space with no shape to it — and these
-              are the four numbers a first-time visitor is actually asking
-              about. Each is counted from the data it describes, so none of them
-              can quietly go out of date. */}
-          <dl
-            className="rise mt-12 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4"
-            style={{ animationDelay: `${STAGGER_MS * 2}ms` }}
-          >
-            {stats.map(([key, value]) => (
-              <div key={key} className="border-t border-ink pt-2">
-                <dt className="label text-grey-500">{t(key)}</dt>
-                <dd
-                  className="numeric mt-2 font-bold leading-none"
-                  style={{ fontSize: "var(--text-title)" }}
-                >
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
         </section>
 
         {/* Above the fork, not inside either arm of it: a name is what both
@@ -127,11 +105,35 @@ export function HomeScreen({
             maxLength={NAME_MAX_LENGTH}
             placeholder={t("namePlaceholder")}
             autoComplete="nickname"
-            className="mt-2 w-full border-b border-ink bg-transparent pb-2 focus:border-b-2 focus:pb-[7px] outline-none placeholder:text-grey-300 focus:border-accent"
+            className="mt-2 w-full border-b border-ink bg-transparent pb-2 outline-none placeholder:text-grey-300 focus:border-b-2 focus:border-accent focus:pb-[7px]"
             style={{ fontSize: "var(--text-title)" }}
           />
         </section>
       </div>
+
+      {/* A band of its own, spanning the whole field.
+          These four numbers first went in the left column, under the tagline,
+          which left the name field alone in the right one with nothing to
+          balance it — the two halves of the page ended 147px apart. Across the
+          full width they stop being a tail on one column and become their own
+          layer: statement, then data, then the two ways in. Each is counted
+          from the thing it describes, so none of them can quietly go stale. */}
+      <dl
+        className="rise mt-14 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4"
+        style={{ animationDelay: `${STAGGER_MS * 2}ms` }}
+      >
+        {stats.map(([key, value]) => (
+          <div key={key} className="border-t border-ink pt-2">
+            <dt className="label text-grey-500">{t(key)}</dt>
+            <dd
+              className="numeric mt-2 font-bold leading-none"
+              style={{ fontSize: "var(--text-title)" }}
+            >
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
       <div
         className="rise mt-14 grid gap-12 md:mt-auto md:grid-cols-12 md:gap-0 md:pt-16"
