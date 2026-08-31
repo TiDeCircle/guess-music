@@ -213,6 +213,32 @@ export const STRINGS = {
   reconnecting: { th: "กำลังเชื่อมต่อใหม่", en: "Reconnecting" },
   roomClosed: { th: "ห้องถูกปิดแล้ว", en: "This room has closed" },
   offline: { th: "ออฟไลน์", en: "Offline" },
+
+  /* --- reactions --- */
+  react: { th: "รีแอคชัน", en: "React" },
+  "reaction.alert": { th: "ตกใจ", en: "Alert" },
+  "reaction.what": { th: "งง", en: "What" },
+  "reaction.gg": { th: "ยอมใจ", en: "GG" },
+  "reaction.fast": { th: "ไวจัด", en: "Fast" },
+  "reaction.oops": { th: "พลาด", en: "Oops" },
+  "reaction.fire": { th: "เข้าฝัก", en: "Fire" },
+
+  /* --- match awards --- */
+  matchAwards: { th: "ฉายาประจำแมตช์", en: "Match Awards" },
+  "award.lightning-fast": { th: "สายฟ้าแลบ", en: "Lightning Fast" },
+  "award.lightning-fast.desc": { th: "ตอบถูกด้วยเวลาเฉลี่ยเร็วที่สุด", en: "Fastest average answer speed" },
+  "award.one-second-ear": { th: "หูทิพย์ 1 วิ", en: "One-Second Ear" },
+  "award.one-second-ear.desc": { th: "ตอบถูกที่ 1 วินาทีบ่อยที่สุด", en: "Most correct guesses at 1s" },
+  "award.iron-streak": { th: "คอมโบไร้พ่าย", en: "Iron Streak" },
+  "award.iron-streak.desc": { th: "ตอบถูกติดต่อกันยาวนานที่สุด", en: "Longest consecutive streak" },
+  "award.clutch-master": { th: "ตัวตึงวิสุดท้าย", en: "Clutch Master" },
+  "award.clutch-master.desc": { th: "ตอบถูกช่วงท้ายเวลาบ่อยที่สุด", en: "Buzzer-beater answers" },
+  "award.clean-sheet": { th: "สมบูรณ์แบบ 100%", en: "Clean Sheet" },
+  "award.clean-sheet.desc": { th: "ตอบถูกครบทุกข้อในเกม", en: "100% accuracy all rounds" },
+  "award.sniper": { th: "แม่นยำสูง", en: "Sniper" },
+  "award.sniper.desc": { th: "สัดส่วนตอบถูกสูงสุด", en: "Highest accuracy in match" },
+  "award.mvp-carry": { th: "ผู้แบกทีม", en: "MVP Carry" },
+  "award.mvp-carry.desc": { th: "ตอบถูกช่วยทีมมากที่สุด", en: "Most answers scored for co-op" },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

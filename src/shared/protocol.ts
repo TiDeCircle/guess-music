@@ -107,6 +107,12 @@ export type AnswerResult = {
   level: number;
 };
 
+export const REACTION_IDS = ["alert", "what", "gg", "fast", "oops", "fire"] as const;
+export type ReactionId = (typeof REACTION_IDS)[number];
+export const reactionSchema = z.object({
+  reaction: z.enum(REACTION_IDS),
+});
+
 export interface ClientToServerEvents {
   "room:create": (
     payload: unknown,
@@ -139,6 +145,8 @@ export interface ClientToServerEvents {
   "round:answer": (payload: unknown, ack?: (res: Ack<AnswerResult>) => void) => void;
   /** Heardle: spend a level to hear more of the clip. */
   "round:unlock": (payload: unknown) => void;
+  /** Send a live reaction stamp to the room. */
+  "room:react": (payload: unknown) => void;
   /**
    * Clock sync. The client measures round-trip time and derives how far its
    * Date.now() sits from the server's, so a countdown to a server deadline is
@@ -158,4 +166,7 @@ export interface ServerToClientEvents {
   "room:error": (error: { code: string; message: string }) => void;
   /** The public room list, pushed whenever it changes. */
   "rooms:listing": (rooms: RoomListing[]) => void;
+  /** Live reaction stamp sent by a player in the room. */
+  "room:reaction": (data: { playerId: string; reaction: ReactionId; id: string }) => void;
 }
+

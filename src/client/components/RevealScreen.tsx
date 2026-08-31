@@ -1,9 +1,11 @@
 "use client";
 
 import type { RoomState } from "@/shared/types";
+import type { ReactionId } from "@/shared/protocol";
 import { MODES, unlockedMs } from "@/shared/modes";
 import { useLang } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
+import { ReactionPicker } from "./ReactionPicker";
 
 /**
  * The moment the whole Lockstep design exists for: every player finds out at
@@ -15,7 +17,17 @@ import { FieldLabel } from "./Shell";
  * Heardle. Without that the reveal only said who was right, and the whole
  * argument after a round is about who was faster.
  */
-export function RevealScreen({ room, playerId }: { room: RoomState; playerId: string | null }) {
+export function RevealScreen({
+  room,
+  playerId,
+  reactions,
+  onReact,
+}: {
+  room: RoomState;
+  playerId: string | null;
+  reactions?: Record<string, { reaction: ReactionId; id: string } | undefined>;
+  onReact?: (reaction: ReactionId) => void;
+}) {
   const { t } = useLang();
   const reveal = room.reveal;
   if (!reveal) return null;
@@ -133,6 +145,14 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
                     {!shared && r === firstCorrect && rows.filter((x) => x.correct).length > 1 && (
                       <span className="label ml-3 text-accent">{t("fastest")}</span>
                     )}
+                    {reactions?.[r.playerId] && (
+                      <span
+                        key={reactions[r.playerId]?.id}
+                        className="animate-fade-in font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/60 bg-paper/90 px-1 py-0.5 ml-2"
+                      >
+                        [{reactions[r.playerId]?.reaction.toUpperCase()}]
+                      </span>
+                    )}
                   </span>
                   <span className="numeric shrink-0 font-semibold">
                     {r.gained > 0 ? `+${r.gained}` : "0"}
@@ -175,6 +195,12 @@ export function RevealScreen({ room, playerId }: { room: RoomState; playerId: st
           })}
         </ul>
       </section>
+
+      {onReact && (
+        <div className="enter md:col-span-12" style={{ animationDelay: "120ms" }}>
+          <ReactionPicker onReact={onReact} />
+        </div>
+      )}
     </div>
   );
 }

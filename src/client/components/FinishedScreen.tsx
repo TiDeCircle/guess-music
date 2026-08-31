@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import type { RoomState } from "@/shared/types";
 import { MODES } from "@/shared/modes";
+import { computeMatchAwards } from "@/shared/awards";
 import { useLang } from "@/client/i18n";
 import { Button } from "./Button";
 import { FieldLabel } from "./Shell";
@@ -34,6 +36,11 @@ export function FinishedScreen({
    * becomes the room's total and the list drops its ranks.
    */
   const shared = MODES[room.config.mode].shared;
+
+  const awards = useMemo(
+    () => (room.summary ? computeMatchAwards(room.summary, room.players, room.config.mode) : {}),
+    [room.summary, room.players, room.config.mode],
+  );
 
   return (
     <div className="flex flex-col gap-12">
@@ -80,20 +87,42 @@ export function FinishedScreen({
             {standings.map((p, i) => (
               <li
                 key={p.id}
-                className="grid grid-cols-[2rem_1fr_auto] items-baseline gap-4 border-b border-grey-300 py-4"
+                className="grid grid-cols-[2rem_1fr_auto] items-start gap-4 border-b border-grey-300 py-4"
               >
-                <span className="numeric label text-grey-500">
+                <span className="numeric label text-grey-500 pt-0.5">
                   {shared ? "" : String(i + 1).padStart(2, "0")}
                 </span>
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <span
+                    className={!shared && i === 0 ? "font-semibold" : ""}
+                    style={{ fontSize: "var(--text-body)" }}
+                  >
+                    {p.name}
+                    {p.id === playerId ? ` · ${t("you")}` : ""}
+                  </span>
+                  {(() => {
+                    const playerAwards = awards[p.id];
+                    if (!playerAwards || playerAwards.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        {playerAwards.map((award) => (
+                          <span
+                            key={award.id}
+                            title={t(`award.${award.id}.desc` as any)}
+                            className="inline-flex items-center gap-1 font-mono text-[11px] font-bold uppercase tracking-wider text-accent border border-accent/40 bg-paper px-1.5 py-0.5"
+                          >
+                            <span>★ {t(`award.${award.id}` as any)}</span>
+                            {award.value != null && (
+                              <span className="opacity-75 font-normal">({award.value})</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <span
-                  className={!shared && i === 0 ? "font-semibold" : ""}
-                  style={{ fontSize: "var(--text-body)" }}
-                >
-                  {p.name}
-                  {p.id === playerId ? ` · ${t("you")}` : ""}
-                </span>
-                <span
-                  className="numeric font-semibold"
+                  className="numeric font-semibold pt-0.5"
                   style={{ fontSize: "var(--text-body)" }}
                 >
                   {shared ? "" : p.score}

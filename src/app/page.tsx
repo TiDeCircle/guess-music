@@ -118,11 +118,18 @@ export default function Page() {
           onAnswer={(index, guess) => void game.answer(index, guess)}
           onUnlock={game.unlock}
           onReplay={game.replayClip}
+          reactions={game.reactions}
+          onReact={game.react}
         />
       )}
 
       {game.room && phase === "reveal" && (
-        <RevealScreen room={game.room} playerId={game.playerId} />
+        <RevealScreen
+          room={game.room}
+          playerId={game.playerId}
+          reactions={game.reactions}
+          onReact={game.react}
+        />
       )}
 
       {game.room && phase === "finished" && (

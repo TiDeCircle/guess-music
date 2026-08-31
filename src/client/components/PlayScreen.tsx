@@ -11,10 +11,12 @@ import type { RoundOutcome } from "@/client/useGame";
 import { RoundTimer } from "./RoundTimer";
 import { RoundDots } from "./RoundDots";
 import { PlayerStrip } from "./PlayerStrip";
+import { ReactionPicker } from "./ReactionPicker";
 import { SongSearch } from "./SongSearch";
 import { UnlockLadder } from "./UnlockLadder";
 import { VinylRecord } from "./VinylRecord";
 import { FieldLabel } from "./Shell";
+import type { ReactionId } from "@/shared/protocol";
 
 /**
  * The Round in progress. Everyone in the room is on the same clock; nothing
@@ -35,6 +37,8 @@ export function PlayScreen({
   onAnswer,
   onUnlock,
   onReplay,
+  reactions,
+  onReact,
 }: {
   room: RoomState;
   playerId: string | null;
@@ -47,6 +51,8 @@ export function PlayScreen({
   onAnswer: (index: number, guess: string) => void;
   onUnlock: (index: number) => void;
   onReplay: () => void;
+  reactions?: Record<string, { reaction: ReactionId; id: string } | undefined>;
+  onReact?: (reaction: ReactionId) => void;
 }) {
   const { t } = useLang();
   const round = room.round;
@@ -318,7 +324,8 @@ export function PlayScreen({
         </section>
       </div>
 
-      <PlayerStrip room={room} playerId={playerId} />
+      <PlayerStrip room={room} playerId={playerId} reactions={reactions} />
+      {onReact && <ReactionPicker onReact={onReact} />}
     </div>
   );
 }

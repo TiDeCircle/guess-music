@@ -8,6 +8,7 @@ import type {
   AnswerResult,
   ClientToServerEvents,
   JoinResult,
+  ReactionId,
   ServerToClientEvents,
 } from "@/shared/protocol";
 import { MODES, unlockedMs } from "@/shared/modes";
@@ -123,6 +124,7 @@ export function useGame() {
     index: -1,
     wrong: [],
   });
+  const [reactions, setReactions] = useState<Record<string, { reaction: ReactionId; id: string }>>({});
 
   if (!audioRef.current && typeof window !== "undefined") {
     audioRef.current = new AudioEngine();
@@ -193,6 +195,12 @@ export function useGame() {
     socket.on("room:state", (next) => setRoom(next));
     socket.on("rooms:listing", (rooms) => setRoomList(rooms));
     socket.on("room:error", (e) => setError(e.message));
+    socket.on("room:reaction", ({ playerId, reaction, id }) => {
+      setReactions((prev) => ({ ...prev, [playerId]: { reaction, id } }));
+      setTimeout(() => {
+        setReactions((prev) => (prev[playerId]?.id === id ? { ...prev, [playerId]: undefined as any } : prev));
+      }, 2200);
+    });
     socket.on("room:closed", () => {
       writeSession(null);
       setRoom(null);
@@ -550,6 +558,10 @@ export function useGame() {
     [round, guessLog],
   );
 
+  const react = useCallback((reaction: ReactionId) => {
+    socketRef.current?.emit("room:react", { reaction });
+  }, []);
+
   return {
     status,
     room,
@@ -580,6 +592,8 @@ export function useGame() {
     answer,
     leave,
     serverNow,
+    reactions,
+    react,
   };
 }
 

@@ -8,6 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 import type { RoomState } from "@/shared/types";
+import type { ReactionId } from "@/shared/protocol";
 import { useLang } from "@/client/i18n";
 import { answeredSummary } from "@/client/roundStatus";
 import { prefersReducedMotion } from "@/client/motionPrefs";
@@ -54,9 +55,11 @@ function token(el: Element, name: string, fallback: string): string {
 export function PlayerStrip({
   room,
   playerId,
+  reactions,
 }: {
   room: RoomState;
   playerId: string | null;
+  reactions?: Record<string, { reaction: ReactionId; id: string } | undefined>;
 }) {
   const { t } = useLang();
   const answered = new Set(room.answeredPlayerIds);
@@ -197,11 +200,19 @@ export function PlayerStrip({
                 />
               )}
               <span
-                className={`relative truncate ${p.connected ? "" : "line-through opacity-50"}`}
+                className={`relative flex items-center gap-1.5 truncate ${p.connected ? "" : "line-through opacity-50"}`}
                 style={{ fontSize: "var(--text-body)" }}
               >
-                {p.name}
-                {p.id === playerId ? ` · ${t("you")}` : ""}
+                <span className="truncate">{p.name}</span>
+                {p.id === playerId ? <span className="shrink-0 opacity-75">· {t("you")}</span> : null}
+                {reactions?.[p.id] && (
+                  <span
+                    key={reactions[p.id]?.id}
+                    className="animate-fade-in font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/60 bg-paper/90 px-1 py-0.5 shrink-0"
+                  >
+                    [{reactions[p.id]?.reaction.toUpperCase()}]
+                  </span>
+                )}
               </span>
               <span className="numeric label relative shrink-0">{p.score}</span>
             </div>

@@ -199,7 +199,14 @@ export type RevealView = {
 export type MatchSummaryRound = {
   index: number;
   track: Track;
-  results: Array<{ playerId: string; correct: boolean; gained: number }>;
+  results: Array<{
+    playerId: string;
+    correct: boolean;
+    gained: number;
+    elapsedMs?: number | null;
+    level?: number;
+    byPlayerId?: string | null;
+  }>;
 };
 
 /**

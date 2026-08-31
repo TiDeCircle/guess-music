@@ -19,6 +19,7 @@ import {
   MAX_PLAYERS,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
+  type ReactionId,
 } from "@/shared/protocol";
 import { buildPool } from "./catalog";
 
@@ -160,6 +161,8 @@ export type RoomEvents = {
    * vanishing, filling up, starting a match, or being locked.
    */
   onListingChanged: () => void;
+  /** Called when a player sends a live reaction stamp. */
+  onReaction?: (room: Room, playerId: string, reaction: ReactionId) => void;
 };
 
 export class RoomError extends Error {
@@ -701,6 +704,9 @@ export class RoomStore {
         playerId: r.playerId,
         correct: r.correct,
         gained: r.gained,
+        elapsedMs: r.elapsedMs,
+        level: r.level,
+        byPlayerId: r.byPlayerId,
       })),
     });
 
@@ -732,6 +738,18 @@ export class RoomStore {
     room.summary = null;
     this.events.onState(room);
     this.events.onListingChanged();
+  }
+
+  private lastReactionAt = new Map<string, number>();
+
+  /** Broadcast a live reaction stamp with per-player rate limiting. */
+  recordReaction(room: Room, playerId: string, reaction: ReactionId): void {
+    if (!room.players.has(playerId)) return;
+    const now = Date.now();
+    const last = this.lastReactionAt.get(playerId) ?? 0;
+    if (now - last < 400) return;
+    this.lastReactionAt.set(playerId, now);
+    this.events.onReaction?.(room, playerId, reaction);
   }
 }
 

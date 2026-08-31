@@ -450,4 +450,21 @@ describe("socket wiring", () => {
     guest.emit("match:lobby");
     expect((await refused).message).toMatch(/host/);
   });
+
+  it("broadcasts room:reaction to all clients in the room", async () => {
+    const host = await client();
+    const guest = await client();
+    const created = await emit<any>(host, "room:create", { name: "Host" });
+    await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
+
+    const receivedByHost = new Promise<any>((r) => host.once("room:reaction", r));
+    const receivedByGuest = new Promise<any>((r) => guest.once("room:reaction", r));
+
+    guest.emit("room:react", { reaction: "fire" });
+
+    const [hostReaction, guestReaction] = await Promise.all([receivedByHost, receivedByGuest]);
+    expect(hostReaction.reaction).toBe("fire");
+    expect(hostReaction.playerId).toBe(guestReaction.playerId);
+  });
 });
+

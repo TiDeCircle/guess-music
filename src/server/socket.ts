@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Server as HttpServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import {
@@ -7,6 +8,7 @@ import {
   createRoomSchema,
   joinRoomSchema,
   readySchema,
+  reactionSchema,
   unlockSchema,
   type ClientToServerEvents,
   type ServerToClientEvents,
@@ -57,6 +59,13 @@ export function attachSocketServer(httpServer: HttpServer): Server {
     },
     onListingChanged() {
       broadcastListing();
+    },
+    onReaction(room, playerId, reaction) {
+      io.to(roomChannel(room.code)).emit("room:reaction", {
+        playerId,
+        reaction,
+        id: randomUUID(),
+      });
     },
   });
   store.start();
@@ -197,6 +206,14 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       const parsed = unlockSchema.safeParse(payload);
       if (!parsed.success) return;
       store.unlock(ctx.room, ctx.playerId, parsed.data.index);
+    });
+
+    socket.on("room:react", (payload) => {
+      const ctx = contextFor(socket);
+      if (!ctx) return;
+      const parsed = reactionSchema.safeParse(payload);
+      if (!parsed.success) return;
+      store.recordReaction(ctx.room, ctx.playerId, parsed.data.reaction);
     });
 
     socket.on("disconnect", () => {
