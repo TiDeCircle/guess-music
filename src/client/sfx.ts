@@ -41,7 +41,9 @@ export type Cue =
   | "missed"
   | "finish"
   | "alert"
-  | "urgent";
+  | "urgent"
+  | "select"
+  | "tick";
 
 /** Mirrors `RoundOutcome` in useGame. Declared here to keep sfx importing nothing. */
 export type Outcome = "correct" | "wrong" | "missed";
@@ -109,6 +111,18 @@ export const CUES: Record<Cue, readonly Tone[]> = {
   // never a per-second tick, which would turn a warning into an annoyance. Over
   // the music like `lock` and `unlock`, so it stays just as brief.
   urgent: [{ hz: 739.99, startMs: 0, ms: 70, gain: 0.3 }],
+
+  // The host picked a mode, a playlist, a difficulty, a round count. The
+  // lightest thing in the set on purpose — the lobby is browsed, not played,
+  // and a host flicking through four difficulties should never feel like they
+  // are triggering four verdicts.
+  select: [{ hz: 523.25, startMs: 0, ms: 45, gain: 0.18 }],
+
+  // One beat of the count-in, at 3, at 2, and at 1. Three beats over three
+  // seconds is a heartbeat, not the per-frame ticking `appropriate-no-high-
+  // frequency` warns against — the room's own clip is the payoff sound at
+  // zero, so this never tries to be one.
+  tick: [{ hz: 440.0, startMs: 0, ms: 55, gain: 0.24 }],
 };
 
 /** Which cue a finished Round earns. */

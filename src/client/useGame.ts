@@ -104,6 +104,8 @@ export function useGame() {
   const levelRef = useRef({ index: -1, level: 0 });
   /** Round we have already sounded the final-stretch warning for. */
   const urgentRef = useRef(-1);
+  /** Count-in beats already sounded, and the `startAt` they belong to. */
+  const countInTicksRef = useRef({ startAt: -1, fired: new Set<number>() });
   /** Whether the room's mode types its answers. Read inside `answer`. */
   const typedModeRef = useRef(false);
 
@@ -371,6 +373,36 @@ export function useGame() {
     return () => clearTimeout(done);
   }, [phase, round]);
 
+  /**
+   * One beat for each number on the count-in screen.
+   *
+   * Recomputed against `startAt` rather than driven by the number on screen, so
+   * a room broadcast landing mid-count-in reschedules the same three instants
+   * instead of skipping them. `fired` is keyed by count rather than cleared
+   * per round, since a room only ever gets one count-in.
+   */
+  useEffect(() => {
+    if (phase !== "playing" || !round || round.index !== 0) return;
+    if (countInTicksRef.current.startAt !== round.startAt) {
+      countInTicksRef.current = { startAt: round.startAt, fired: new Set() };
+    }
+    const ticks = countInTicksRef.current;
+    const now = Date.now() + clockOffsetRef.current;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (const count of [3, 2, 1]) {
+      if (ticks.fired.has(count)) continue;
+      const wait = round.startAt - count * 1000 - now;
+      if (wait < 0) continue;
+      timers.push(
+        setTimeout(() => {
+          ticks.fired.add(count);
+          sfxRef.current?.play("tick");
+        }, wait),
+      );
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [phase, round]);
+
   useEffect(() => {
     const audio = audioRef.current;
     const socket = socketRef.current;
@@ -477,6 +509,7 @@ export function useGame() {
   }, []);
 
   const setConfig = useCallback((config: MatchConfig) => {
+    sfxRef.current?.play("select");
     socketRef.current?.emit("room:config", config);
   }, []);
 

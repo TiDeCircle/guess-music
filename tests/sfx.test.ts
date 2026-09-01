@@ -92,6 +92,14 @@ describe("failure is never punished", () => {
     expect(cuePeakGain("alert")).toBeGreaterThan(cuePeakGain("missed"));
   });
 
+  // `select` is browsed, not played: the lobby has no verdict to punish or
+  // reward, so it has to sit under every cue that reports one.
+  it("keeps browsing the lobby quieter than any round outcome", () => {
+    for (const cue of ["lock", "unlock", "correct", "wrong", "finish"] as Cue[]) {
+      expect(cuePeakGain("select")).toBeLessThan(cuePeakGain(cue));
+    }
+  });
+
   // A single flat tone reads as a note; two descending ones read as a verdict.
   it("does not let the wrong cue fall away from the player", () => {
     expect(CUES.wrong).toHaveLength(1);
@@ -112,6 +120,23 @@ describe("the mix sits under the music", () => {
     for (const cue of ALL) {
       expect(cuePeakGain(cue) * SFX_MIX).toBeLessThan(0.2);
     }
+  });
+});
+
+/**
+ * `appropriate-no-high-frequency`: three beats over three seconds is a
+ * heartbeat; the same beat looping every frame is the annoyance the rule
+ * warns about. Nothing here can assert the schedule (that lives in
+ * `useGame`), but the beat itself has to stay light enough to survive being
+ * heard three times a match.
+ */
+describe("the count-in beat", () => {
+  it("stays lighter than the warning it leads into", () => {
+    expect(cuePeakGain("tick")).toBeLessThan(cuePeakGain("urgent"));
+  });
+
+  it("stays brief enough for three of them to fit in one second", () => {
+    expect(cueDurationMs("tick")).toBeLessThan(200);
   });
 });
 
