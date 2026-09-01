@@ -16,6 +16,14 @@ import { RoomBrowser } from "./RoomBrowser";
 const STAGGER_MS = 90;
 
 /**
+ * Remembered across visits, unlike the session in `useGame` — that one is
+ * scoped to reclaiming a single room and is cleared the moment you leave it
+ * on purpose. A nickname is not tied to any one room, so leaving should not
+ * cost it.
+ */
+const NAME_KEY = "guess-music.name";
+
+/**
  * The way in.
  *
  * Two things happen here and only two: you start a room or you get into one.
@@ -59,6 +67,28 @@ export function HomeScreen({
     if (window.matchMedia?.("(pointer: fine)").matches) nameRef.current?.focus();
   }, []);
 
+  // Read after mount, not during render: the server has no idea what name
+  // this visitor used last time, and rendering it up front would mismatch
+  // the markup Next.js sent down.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(NAME_KEY);
+      if (saved) setName(saved);
+    } catch {
+      // Private mode and blocked site data both land here; the field just
+      // starts blank, same as before this existed.
+    }
+  }, []);
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    try {
+      localStorage.setItem(NAME_KEY, value);
+    } catch {
+      // See above.
+    }
+  };
+
   const playlistCount = PLAYLIST_GROUPS.reduce((n, g) => n + g.ids.length, 0);
   const stats: Array<[StringKey, string]> = [
     ["statModes", String(MODE_ORDER.length)],
@@ -101,7 +131,7 @@ export function HomeScreen({
           <input
             ref={nameRef}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => handleNameChange(e.target.value)}
             maxLength={NAME_MAX_LENGTH}
             placeholder={t("namePlaceholder")}
             autoComplete="nickname"

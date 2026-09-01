@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useGame } from "@/client/useGame";
 import { useLang } from "@/client/i18n";
 import { Shell } from "@/client/components/Shell";
+import { ConfirmDialog } from "@/client/components/ConfirmDialog";
 import { HomeScreen } from "@/client/components/HomeScreen";
 import { LobbyScreen } from "@/client/components/LobbyScreen";
 import { PlayScreen } from "@/client/components/PlayScreen";
@@ -22,6 +23,8 @@ export default function Page() {
   const [joining, setJoining] = useState(false);
   /** Host pressed start; the server is fetching a pool from iTunes. */
   const [starting, setStarting] = useState(false);
+  /** A leave was requested mid-round and is waiting on confirmation. */
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
 
   const phase = game.room?.phase;
   /** A Round is on screen in one form or another. */
@@ -47,7 +50,10 @@ export default function Page() {
    */
   const handleLeave = () => {
     const midMatch = inRound || phase === "reveal";
-    if (midMatch && !window.confirm(t("leaveConfirm"))) return;
+    if (midMatch) {
+      setConfirmingLeave(true);
+      return;
+    }
     game.leave();
   };
 
@@ -161,6 +167,18 @@ export default function Page() {
       {game.status === "offline" && (
         <p className="label mt-12 text-accent">{t("reconnecting")}</p>
       )}
+
+      <ConfirmDialog
+        open={confirmingLeave}
+        message={t("leaveConfirm")}
+        confirmLabel={t("leave")}
+        cancelLabel={t("cancel")}
+        onCancel={() => setConfirmingLeave(false)}
+        onConfirm={() => {
+          setConfirmingLeave(false);
+          game.leave();
+        }}
+      />
     </Shell>
   );
 }

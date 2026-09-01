@@ -80,6 +80,7 @@ export const STRINGS = {
   unmute: { th: "เปิดเสียง", en: "Unmute" },
   muted: { th: "ปิดเสียงแล้ว", en: "Muted" },
   kick: { th: "เตะออก", en: "Kick" },
+  cancel: { th: "ยกเลิก", en: "Cancel" },
   kickConfirm: {
     th: "เตะผู้เล่นนี้ออกจากห้อง เข้าใหม่ด้วยรหัสเดิมไม่ได้แล้ว — ยืนยันไหม",
     en: "Kick this player? They won't be able to rejoin with the code — are you sure?",

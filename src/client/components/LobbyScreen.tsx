@@ -6,6 +6,7 @@ import { DIFFICULTIES, DIFFICULTY_ORDER } from "@/shared/difficulty";
 import { MAX_PLAYERS } from "@/shared/protocol";
 import { useLang, type StringKey } from "@/client/i18n";
 import { Button } from "./Button";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { FieldLabel } from "./Shell";
 import { ModePicker } from "./ModePicker";
 import { PlaylistPicker } from "./PlaylistPicker";
@@ -54,6 +55,8 @@ export function LobbyScreen({
    */
   const [step, setStep] = useState(0);
   const isHost = room.hostId === playerId;
+  /** Who a kick is pending confirmation for, if anyone. */
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
 
   const copyCode = async () => {
     try {
@@ -157,9 +160,7 @@ export function LobbyScreen({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(t("kickConfirm"))) onKick(p.id);
-                          }}
+                          onClick={() => setKickTarget({ id: p.id, name: p.name })}
                           className="press font-mono text-[10px] uppercase tracking-wider hover:text-accent"
                         >
                           {t("kick")}
@@ -283,6 +284,19 @@ export function LobbyScreen({
           )}
         </div>
       </section>
+
+      <ConfirmDialog
+        open={kickTarget !== null}
+        title={kickTarget?.name}
+        message={t("kickConfirm")}
+        confirmLabel={t("kick")}
+        cancelLabel={t("cancel")}
+        onCancel={() => setKickTarget(null)}
+        onConfirm={() => {
+          if (kickTarget) onKick(kickTarget.id);
+          setKickTarget(null);
+        }}
+      />
     </div>
   );
 }
