@@ -154,6 +154,7 @@ export const STRINGS = {
   "playlist.thai-90s": { th: "ไทยยุค 90", en: "Thai — the 90s" },
   "playlist.thai-2000s": { th: "ไทยยุค 2000s", en: "Thai — the 2000s" },
   "playlist.thai-2020s": { th: "ไทยฮิต 2020s", en: "Thai — the 2020s" },
+  "playlist.thai-luk-thung": { th: "ลูกทุ่ง", en: "Thai — luk thung" },
   "playlist.intl-now": { th: "สากลฮิตตอนนี้", en: "Global — charting now" },
   "playlist.intl-classic": { th: "สากลฮิตตลอดกาล", en: "Global — all-time" },
   "playlist.kpop-now": { th: "เคป็อปฮิตตอนนี้", en: "K-pop — charting now" },

@@ -6,6 +6,7 @@ import { THAI_2020S_ARTISTS } from "./thai2020s";
 import { INTL_ARTISTS } from "./intl";
 import { KPOP_ARTISTS } from "./kpop";
 import { HITS_TRACK_IDS } from "./hits";
+import { LUK_THUNG_TRACK_IDS } from "./luk-thung";
 
 /**
  * Where a Playlist's Tracks come from.
@@ -99,6 +100,13 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
       yearFrom: 2020,
     },
   },
+  "thai-luk-thung": {
+    id: "thai-luk-thung",
+    group: "thai",
+    // A CSV the user brought in, resolved the same way thai-buzz was — see
+    // src/data/seeds/luk-thung.ts for what was asked for and what was found.
+    source: { kind: "tracks", country: "TH", trackIds: LUK_THUNG_TRACK_IDS },
+  },
 
   "intl-now": {
     id: "intl-now",
@@ -134,6 +142,7 @@ export const PLAYLIST_GROUPS: Array<{ group: PlaylistGroup; ids: PlaylistId[] }>
       "thai-2020s",
       "thai-2000s",
       "thai-90s",
+      "thai-luk-thung",
     ],
   },
   { group: "intl", ids: ["intl-now", "intl-classic"] },
