@@ -11,7 +11,7 @@ import {
 const ALL = Object.keys(CUES) as Cue[];
 
 /** The cues that can sound while a clip is still playing. */
-const DURING_ROUND: Cue[] = ["lock", "unlock"];
+const DURING_ROUND: Cue[] = ["lock", "unlock", "urgent"];
 
 describe("cue shape", () => {
   it("gives every cue at least one audible tone", () => {
@@ -83,6 +83,13 @@ describe("failure is never punished", () => {
       if (cue === "missed") continue;
       expect(cuePeakGain("missed")).toBeLessThan(cuePeakGain(cue));
     }
+  });
+
+  // `alert` reports the room, not the player's performance, so it must sit
+  // outside the win/lose hierarchy rather than reading as a verdict.
+  it("keeps the room-level alert out of the correct/wrong hierarchy", () => {
+    expect(cuePeakGain("alert")).toBeLessThan(cuePeakGain("correct"));
+    expect(cuePeakGain("alert")).toBeGreaterThan(cuePeakGain("missed"));
   });
 
   // A single flat tone reads as a note; two descending ones read as a verdict.

@@ -33,7 +33,15 @@ export type Tone = {
   gain: number;
 };
 
-export type Cue = "lock" | "unlock" | "correct" | "wrong" | "missed" | "finish";
+export type Cue =
+  | "lock"
+  | "unlock"
+  | "correct"
+  | "wrong"
+  | "missed"
+  | "finish"
+  | "alert"
+  | "urgent";
 
 /** Mirrors `RoundOutcome` in useGame. Declared here to keep sfx importing nothing. */
 export type Outcome = "correct" | "wrong" | "missed";
@@ -90,6 +98,17 @@ export const CUES: Record<Cue, readonly Tone[]> = {
     { hz: 880.0, startMs: 90, ms: 100, gain: 0.32 },
     { hz: 1046.5, startMs: 180, ms: 220, gain: 0.32 },
   ],
+
+  // Something outside the round itself needs attention: the room rejected a
+  // request, the host closed it, or a player got kicked from it. Never fired
+  // by anything the player did right or wrong — this pitch belongs to none of
+  // them — so it reads as "the room, not you" rather than a verdict.
+  alert: [{ hz: 493.88, startMs: 0, ms: 150, gain: 0.26 }],
+
+  // The window just entered its last few seconds. Fires once, on the way in —
+  // never a per-second tick, which would turn a warning into an annoyance. Over
+  // the music like `lock` and `unlock`, so it stays just as brief.
+  urgent: [{ hz: 739.99, startMs: 0, ms: 70, gain: 0.3 }],
 };
 
 /** Which cue a finished Round earns. */

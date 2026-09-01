@@ -14,7 +14,7 @@ import type {
 import { MODES, unlockedMs } from "@/shared/modes";
 import { AudioEngine } from "./audio";
 import { SoundEngine, outcomeCue } from "./sfx";
-import { isCountIn } from "./roundStatus";
+import { FINAL_STRETCH_MS, isCountIn } from "./roundStatus";
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -102,6 +102,8 @@ export function useGame() {
   const revealedRef = useRef(-1);
   /** The unlock level we last saw, and the Round it belonged to. */
   const levelRef = useRef({ index: -1, level: 0 });
+  /** Round we have already sounded the final-stretch warning for. */
+  const urgentRef = useRef(-1);
   /** Whether the room's mode types its answers. Read inside `answer`. */
   const typedModeRef = useRef(false);
 
@@ -194,7 +196,10 @@ export function useGame() {
     socket.on("disconnect", () => setStatus("offline"));
     socket.on("room:state", (next) => setRoom(next));
     socket.on("rooms:listing", (rooms) => setRoomList(rooms));
-    socket.on("room:error", (e) => setError(e.message));
+    socket.on("room:error", (e) => {
+      sfxRef.current?.play("alert");
+      setError(e.message);
+    });
     socket.on("room:reaction", ({ playerId, reaction, id }) => {
       setReactions((prev) => ({ ...prev, [playerId]: { reaction, id } }));
       setTimeout(() => {
@@ -202,10 +207,12 @@ export function useGame() {
       }, 2200);
     });
     socket.on("room:closed", () => {
+      sfxRef.current?.play("alert");
       writeSession(null);
       setRoom(null);
     });
     socket.on("room:kicked", ({ message }) => {
+      sfxRef.current?.play("alert");
       writeSession(null);
       setRoom(null);
       setPlayerId(null);
@@ -319,6 +326,27 @@ export function useGame() {
   useEffect(() => {
     if (phase === "finished") sfxRef.current?.play("finish");
   }, [phase]);
+
+  /**
+   * The Round's last few seconds, called out once on the way in.
+   *
+   * Scheduled off the deadline rather than read from a running clock, so nothing
+   * here has to tick every frame just to catch one moment. A player who joins
+   * this effect already past that moment — a refresh, a slow reconnect — gets
+   * silence rather than a cue firing on load for a warning that already passed.
+   */
+  useEffect(() => {
+    if (phase !== "playing" || !round) return;
+    if (urgentRef.current === round.index) return;
+    const now = Date.now() + clockOffsetRef.current;
+    const wait = round.deadlineAt - FINAL_STRETCH_MS - now;
+    if (wait <= 0) return;
+    const timer = setTimeout(() => {
+      urgentRef.current = round.index;
+      sfxRef.current?.play("urgent");
+    }, wait);
+    return () => clearTimeout(timer);
+  }, [phase, round]);
 
   /**
    * Whether the Match is being counted in right now.
@@ -461,6 +489,7 @@ export function useGame() {
     playedRef.current = "";
     revealedRef.current = -1;
     levelRef.current = { index: -1, level: 0 };
+    urgentRef.current = -1;
     socketRef.current?.emit("match:start");
   }, []);
 
