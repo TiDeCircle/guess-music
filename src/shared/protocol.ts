@@ -40,8 +40,11 @@ export const playlistSchema = z.enum([
   "thai-2000s",
   "thai-2020s",
   "thai-luk-thung",
+  "thai-sad",
+  "thai-2019-2020",
   "intl-now",
   "intl-classic",
+  "intl-tiktok",
   "kpop-now",
   "kpop-classic",
 ]);

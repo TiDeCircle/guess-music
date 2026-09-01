@@ -7,6 +7,9 @@ import { INTL_ARTISTS } from "./intl";
 import { KPOP_ARTISTS } from "./kpop";
 import { HITS_TRACK_IDS } from "./hits";
 import { LUK_THUNG_TRACK_IDS } from "./luk-thung";
+import { SAD_TRACK_IDS } from "./sad";
+import { THAI_2019_2020_TRACK_IDS } from "./thai-2019-2020";
+import { TIKTOK_TRACK_IDS } from "./tiktok";
 
 /**
  * Where a Playlist's Tracks come from.
@@ -107,6 +110,19 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
     // src/data/seeds/luk-thung.ts for what was asked for and what was found.
     source: { kind: "tracks", country: "TH", trackIds: LUK_THUNG_TRACK_IDS },
   },
+  "thai-sad": {
+    id: "thai-sad",
+    group: "thai",
+    // A CSV the user brought in, resolved the same way thai-buzz was — see
+    // src/data/seeds/sad-source.csv for what was asked for and what was found.
+    source: { kind: "tracks", country: "TH", trackIds: SAD_TRACK_IDS },
+  },
+  "thai-2019-2020": {
+    id: "thai-2019-2020",
+    group: "thai",
+    // See src/data/seeds/thai-2019-2020-source.csv for what was asked for.
+    source: { kind: "tracks", country: "TH", trackIds: THAI_2019_2020_TRACK_IDS },
+  },
 
   "intl-now": {
     id: "intl-now",
@@ -117,6 +133,12 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
     id: "intl-classic",
     group: "intl",
     source: { kind: "artists", country: "TH", artists: INTL_ARTISTS },
+  },
+  "intl-tiktok": {
+    id: "intl-tiktok",
+    group: "intl",
+    // See src/data/seeds/tiktok-source.csv for what was asked for.
+    source: { kind: "tracks", country: "TH", trackIds: TIKTOK_TRACK_IDS },
   },
 
   "kpop-now": {
@@ -143,9 +165,11 @@ export const PLAYLIST_GROUPS: Array<{ group: PlaylistGroup; ids: PlaylistId[] }>
       "thai-2000s",
       "thai-90s",
       "thai-luk-thung",
+      "thai-sad",
+      "thai-2019-2020",
     ],
   },
-  { group: "intl", ids: ["intl-now", "intl-classic"] },
+  { group: "intl", ids: ["intl-now", "intl-classic", "intl-tiktok"] },
   { group: "kpop", ids: ["kpop-now", "kpop-classic"] },
 ];
 

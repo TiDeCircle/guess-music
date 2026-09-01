@@ -155,8 +155,11 @@ export const STRINGS = {
   "playlist.thai-2000s": { th: "ไทยยุค 2000s", en: "Thai — the 2000s" },
   "playlist.thai-2020s": { th: "ไทยฮิต 2020s", en: "Thai — the 2020s" },
   "playlist.thai-luk-thung": { th: "ลูกทุ่ง", en: "Thai — luk thung" },
+  "playlist.thai-sad": { th: "เพลงเศร้า", en: "Thai — sad songs" },
+  "playlist.thai-2019-2020": { th: "ไทย 2019-2020", en: "Thai — 2019-2020" },
   "playlist.intl-now": { th: "สากลฮิตตอนนี้", en: "Global — charting now" },
   "playlist.intl-classic": { th: "สากลฮิตตลอดกาล", en: "Global — all-time" },
+  "playlist.intl-tiktok": { th: "ไวรัล TikTok", en: "Global — TikTok viral" },
   "playlist.kpop-now": { th: "เคป็อปฮิตตอนนี้", en: "K-pop — charting now" },
   "playlist.kpop-classic": { th: "เคป็อปฮิตตลอดกาล", en: "K-pop — all-time" },
 
