@@ -64,3 +64,24 @@ export function heardleTierPoints(
   const tier = Math.min(Math.max(level, 0), spread);
   return Math.round((BASE_POINTS + MAX_TIME_BONUS * (1 - tier / spread)) * multiplier);
 }
+
+/** How much one more consecutive correct answer adds to the streak bonus. */
+export const STREAK_BONUS_PER_ANSWER = 0.05;
+
+/** Where the streak bonus stops growing — five in a row buys the whole 25%. */
+export const STREAK_BONUS_CAP = 0.25;
+
+/**
+ * What a round's own score is multiplied by, given the streak of correct
+ * answers a player is carrying into it.
+ *
+ * Kept out of `scoreAnswer` and `heardleTierPoints` on purpose: those already
+ * apply the difficulty multiplier, and folding a second multiplier in there
+ * would make one call site responsible for two unrelated ideas. The caller
+ * knows the streak — the round's own scoring functions never see player
+ * history — so it applies this afterwards instead.
+ */
+export function streakMultiplier(streak: number): number {
+  const bonus = Math.min(Math.max(streak, 0) * STREAK_BONUS_PER_ANSWER, STREAK_BONUS_CAP);
+  return 1 + bonus;
+}

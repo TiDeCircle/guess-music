@@ -356,6 +356,53 @@ describe("lockstep sequence", () => {
     expect(room.phase).toBe("finished");
   });
 
+  it("pays a growing bonus for consecutive correct answers", async () => {
+    const { room, ids } = seed(1);
+    await startMedium(room, ids[0]!);
+
+    const gains: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      store.markReady(room, ids[0]!, i);
+      goLive(room);
+      store.submitAnswer(room, ids[0]!, i, room.match!.rounds[i]!.answer.id);
+      gains.push(room.reveal!.results[0]!.gained);
+      if (i < 2) vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+    }
+
+    // Same near-instant answer every round, so any growth is the streak
+    // bonus alone, not the speed bonus.
+    expect(gains[1]).toBeGreaterThan(gains[0]!);
+    expect(gains[2]).toBeGreaterThan(gains[1]!);
+  });
+
+  it("resets the streak bonus on a wrong answer", async () => {
+    const { room, ids } = seed(1);
+    await startMedium(room, ids[0]!);
+
+    store.markReady(room, ids[0]!, 0);
+    goLive(room);
+    store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
+    const firstGain = room.reveal!.results[0]!.gained;
+    vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+
+    store.markReady(room, ids[0]!, 1);
+    goLive(room);
+    const wrong = room.match!.rounds[1]!.choices.find(
+      (c) => c.id !== room.match!.rounds[1]!.answer.id,
+    )!.id;
+    store.submitAnswer(room, ids[0]!, 1, wrong);
+    vi.advanceTimersByTime(ROOM_TUNING.REVEAL_MS + 50);
+
+    store.markReady(room, ids[0]!, 2);
+    goLive(room);
+    store.submitAnswer(room, ids[0]!, 2, room.match!.rounds[2]!.answer.id);
+    const afterMiss = room.reveal!.results[0]!.gained;
+
+    // Back to a bare streak of zero, so this pays the same as the very first
+    // correct answer rather than continuing to climb.
+    expect(afterMiss).toBe(firstGain);
+  });
+
   it("does not stall when the only player still connected has answered", async () => {
     const { room, ids } = seed(2);
     await startMedium(room, ids[0]!);

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BASE_POINTS, MAX_TIME_BONUS, scoreAnswer } from "@/shared/scoring";
+import {
+  BASE_POINTS,
+  MAX_TIME_BONUS,
+  STREAK_BONUS_CAP,
+  scoreAnswer,
+  streakMultiplier,
+} from "@/shared/scoring";
 import { DIFFICULTIES } from "@/shared/difficulty";
 
 describe("scoreAnswer", () => {
@@ -52,6 +58,27 @@ describe("scoreAnswer", () => {
         multiplier: DIFFICULTIES[id].multiplier,
       });
     expect(at("extreme") / at("easy")).toBeCloseTo(2 / 0.75, 5);
+  });
+});
+
+describe("streakMultiplier", () => {
+  it("adds nothing with no streak", () => {
+    expect(streakMultiplier(0)).toBe(1);
+  });
+
+  it("grows by a fixed step per consecutive correct answer", () => {
+    expect(streakMultiplier(1)).toBeCloseTo(1.05, 5);
+    expect(streakMultiplier(2)).toBeCloseTo(1.1, 5);
+    expect(streakMultiplier(3)).toBeCloseTo(1.15, 5);
+  });
+
+  it("stops growing at the cap", () => {
+    expect(streakMultiplier(5)).toBeCloseTo(1 + STREAK_BONUS_CAP, 5);
+    expect(streakMultiplier(50)).toBeCloseTo(1 + STREAK_BONUS_CAP, 5);
+  });
+
+  it("never goes below 1, even for a negative streak", () => {
+    expect(streakMultiplier(-3)).toBe(1);
   });
 });
 

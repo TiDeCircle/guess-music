@@ -88,15 +88,22 @@ describe("quiz rounds", () => {
       }
     });
 
-    it("puts two same-artist decoys in every extreme round", () => {
-      for (const n of sameArtistDecoys(build("extreme", pool(12, 6)), pool(12, 6))) {
-        expect(n).toBe(2);
-      }
+    it("puts two same-artist decoys in every extreme round but the first", () => {
+      const [first, ...rest] = sameArtistDecoys(build("extreme", pool(12, 6)), pool(12, 6));
+      expect(first).toBe(0);
+      for (const n of rest) expect(n).toBe(2);
     });
 
-    it("puts exactly one same-artist decoy in a hard round", () => {
-      for (const n of sameArtistDecoys(build("hard", pool(12, 6)), pool(12, 6))) {
-        expect(n).toBe(1);
+    it("puts exactly one same-artist decoy in a hard round but the first", () => {
+      const [first, ...rest] = sameArtistDecoys(build("hard", pool(12, 6)), pool(12, 6));
+      expect(first).toBe(0);
+      for (const n of rest) expect(n).toBe(1);
+    });
+
+    it("eases the opening round of a match regardless of difficulty", () => {
+      for (const id of ["easy", "medium", "hard", "extreme"] as const) {
+        const [first] = sameArtistDecoys(build(id, pool(12, 6)), pool(12, 6));
+        expect(first).toBe(0);
       }
     });
 

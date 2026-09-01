@@ -12,6 +12,7 @@ import type {
   Track,
 } from "@/shared/types";
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from "@/shared/difficulty";
+import { streakMultiplier } from "@/shared/scoring";
 import { DEFAULT_PLAYLIST } from "@/data/seeds";
 import { makeRng } from "@/shared/rng";
 import { DEFAULT_MODE, MODES, type RoundPlan } from "@/shared/modes";
@@ -91,6 +92,8 @@ type ServerPlayer = {
   id: string;
   name: string;
   score: number;
+  /** Consecutive correct answers so far this Match. Resets on any wrong or missed Round. */
+  streak: number;
   connected: boolean;
   /** Lets a returning player reclaim their seat after a refresh or a drop. */
   sessionId: string;
@@ -489,7 +492,10 @@ export class RoomStore {
       throw new RoomError("no_tracks", "หาเพลงไม่ได้ ลอง playlist อื่นดู");
     }
 
-    for (const player of room.players.values()) player.score = 0;
+    for (const player of room.players.values()) {
+      player.score = 0;
+      player.streak = 0;
+    }
 
     room.pool = pool;
     room.reveal = null;
@@ -670,22 +676,26 @@ export class RoomStore {
     }
 
     if (judged.final) {
-      const record: SubmittedAnswer = {
-        choiceId: guess,
-        elapsedMs,
-        correct: judged.correct,
-        gained: judged.gained,
-        level: judged.level,
-        byPlayerId: playerId,
-      };
       // A shared mode scores the Room, not the guesser: everyone connected ends
       // the Round with the same result and the same points.
       const scored = mode.shared
         ? [...room.players.values()].filter((p) => p.connected)
         : [room.players.get(playerId)].filter((p) => p !== undefined);
       for (const player of scored) {
-        match.answers.set(player.id, record);
-        player.score += judged.gained;
+        // The bonus is each player's own streak, not the guesser's — in a
+        // shared mode everyone has been getting the same results together, so
+        // this only ever diverges if someone was disconnected for a round.
+        const gained = Math.round(judged.gained * streakMultiplier(player.streak));
+        player.streak = judged.correct ? player.streak + 1 : 0;
+        match.answers.set(player.id, {
+          choiceId: guess,
+          elapsedMs,
+          correct: judged.correct,
+          gained,
+          level: judged.level,
+          byPlayerId: playerId,
+        });
+        player.score += gained;
       }
     }
 
@@ -815,6 +825,7 @@ function makePlayer(name: string, socketId: string): ServerPlayer {
     id: randomUUID(),
     name,
     score: 0,
+    streak: 0,
     connected: true,
     sessionId: randomUUID(),
     socketId,

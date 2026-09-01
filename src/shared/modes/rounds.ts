@@ -126,7 +126,12 @@ export function buildChoiceRounds(
     // No Track is ever the answer twice in one Match.
     if (usedAnswers.has(answer.id)) continue;
 
-    const decoys = pickDecoys(answer, pool, difficulty.decoy, rng);
+    // The Round that opens a Match earns an easier decoy spread than the
+    // difficulty asked for, whatever that difficulty is. A player's first
+    // twenty seconds should not be the same coin flip `extreme` gives every
+    // other round — an early win is what keeps a new room in the game.
+    const strategy = rounds.length === 0 ? "different-artist" : difficulty.decoy;
+    const decoys = pickDecoys(answer, pool, strategy, rng);
     // A round with fewer than four options would break the grid; skip the
     // track rather than render a lopsided one.
     if (decoys.length < CHOICE_COUNT - 1) continue;

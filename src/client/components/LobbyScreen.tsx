@@ -258,7 +258,7 @@ export function LobbyScreen({
         {/* Deliberately not pushed to the bottom of the column: the left side
             grows with the player list, and mt-auto would drag the host's only
             action below the fold. */}
-        <div className="grid grid-cols-[auto_1fr] gap-4">
+        <div className="flex gap-4">
           {isHost ? (
             <>
               <Button
@@ -269,16 +269,25 @@ export function LobbyScreen({
               >
                 ←
               </Button>
-              {step < STEPS.length - 1 ? (
-                <Button onClick={() => setStep((s) => s + 1)}>{t("next")}</Button>
-              ) : (
-                <Button onClick={onStart} disabled={starting}>
-                  {starting ? t("loadingTracks") : t("startMatch")}
+              {/* Start is always reachable, not just on the last step: every
+                  setting already has a default, so a host happy with them
+                  should not have to click through steps they have no opinion
+                  on. Next stays for a host who does. */}
+              {step < STEPS.length - 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setStep((s) => s + 1)}
+                  className="flex-1"
+                >
+                  {t("next")}
                 </Button>
               )}
+              <Button onClick={onStart} disabled={starting} className="flex-1">
+                {starting ? t("loadingTracks") : t("startMatch")}
+              </Button>
             </>
           ) : (
-            <div className="label col-span-2 flex items-center border border-grey-300 px-6 py-4 text-grey-500">
+            <div className="label flex flex-1 items-center border border-grey-300 px-6 py-4 text-grey-500">
               {t("waitingForHost")}
             </div>
           )}
