@@ -257,8 +257,19 @@ export function LobbyScreen({
 
         {/* Deliberately not pushed to the bottom of the column: the left side
             grows with the player list, and mt-auto would drag the host's only
-            action below the fold. */}
-        <div className="flex gap-4">
+            action below the fold.
+
+            Grid, not flex: `Button` sets its own `w-full`, and only a grid's
+            `auto` track sizes a 100%-wide child to its content — in a flex
+            row that same child claims the row's full main size and only
+            gives ground on the shrink pass, which is what let "←" balloon
+            into a wide, mostly-empty box the one time this was flex. A third
+            column opens up only on the steps that still show Next. */}
+        <div
+          className={`grid gap-4 ${
+            isHost && step < STEPS.length - 1 ? "grid-cols-[auto_1fr_1fr]" : "grid-cols-[auto_1fr]"
+          }`}
+        >
           {isHost ? (
             <>
               <Button
@@ -274,20 +285,16 @@ export function LobbyScreen({
                   should not have to click through steps they have no opinion
                   on. Next stays for a host who does. */}
               {step < STEPS.length - 1 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setStep((s) => s + 1)}
-                  className="flex-1"
-                >
+                <Button variant="outline" onClick={() => setStep((s) => s + 1)}>
                   {t("next")}
                 </Button>
               )}
-              <Button onClick={onStart} disabled={starting} className="flex-1">
+              <Button onClick={onStart} disabled={starting}>
                 {starting ? t("loadingTracks") : t("startMatch")}
               </Button>
             </>
           ) : (
-            <div className="label flex flex-1 items-center border border-grey-300 px-6 py-4 text-grey-500">
+            <div className="label col-span-full flex items-center border border-grey-300 px-6 py-4 text-grey-500">
               {t("waitingForHost")}
             </div>
           )}
