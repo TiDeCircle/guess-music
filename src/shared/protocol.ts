@@ -89,6 +89,15 @@ export const answerSchema = z.object({
 /** Spend one level to hear more of the Preview. */
 export const unlockSchema = z.object({ index: z.number().int().min(0) });
 
+/** Host removes a player from the Room and blocks their session from rejoining. */
+export const kickSchema = z.object({ playerId: z.string().min(1) });
+
+/** Host stops (or resumes) a player's reaction stamps reaching the Room. */
+export const muteSchema = z.object({
+  playerId: z.string().min(1),
+  muted: z.boolean(),
+});
+
 export type Ack<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
@@ -147,6 +156,10 @@ export interface ClientToServerEvents {
   "round:unlock": (payload: unknown) => void;
   /** Send a live reaction stamp to the room. */
   "room:react": (payload: unknown) => void;
+  /** Host only: remove a player and block their session from rejoining. */
+  "room:kick": (payload: unknown) => void;
+  /** Host only: stop or resume a player's reaction stamps. */
+  "room:mute": (payload: unknown) => void;
   /**
    * Clock sync. The client measures round-trip time and derives how far its
    * Date.now() sits from the server's, so a countdown to a server deadline is
@@ -168,5 +181,10 @@ export interface ServerToClientEvents {
   "rooms:listing": (rooms: RoomListing[]) => void;
   /** Live reaction stamp sent by a player in the room. */
   "room:reaction": (data: { playerId: string; reaction: ReactionId; id: string }) => void;
+  /**
+   * Sent to the kicked player alone, never broadcast to the room: everyone
+   * else learns they are gone from the next `room:state`.
+   */
+  "room:kicked": (data: { message: string }) => void;
 }
 

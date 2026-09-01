@@ -72,6 +72,8 @@ export type Player = {
   /** Total across the current Match. */
   score: number;
   connected: boolean;
+  /** Host has silenced this Player's reaction stamps. Visible to everyone. */
+  muted: boolean;
 };
 
 /**

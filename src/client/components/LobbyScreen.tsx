@@ -30,7 +30,8 @@ export function LobbyScreen({
   onConfig,
   onLock,
   onStart,
-  onLeave,
+  onKick,
+  onSetMuted,
   starting,
 }: {
   room: RoomState;
@@ -40,7 +41,8 @@ export function LobbyScreen({
   onConfig: (config: MatchConfig) => void;
   onLock: (locked: boolean) => void;
   onStart: () => void;
-  onLeave: () => void;
+  onKick: (playerId: string) => void;
+  onSetMuted: (playerId: string, muted: boolean) => void;
   starting: boolean;
 }) {
   const { t } = useLang();
@@ -117,25 +119,57 @@ export function LobbyScreen({
             {t("players")} — {room.players.length}/{MAX_PLAYERS}
           </FieldLabel>
           <ul className="mt-2">
-            {room.players.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-baseline justify-between border-b border-grey-300 py-3"
-                style={{ fontSize: "var(--text-body)" }}
-              >
-                <span className={p.connected ? "" : "text-grey-300 line-through"}>
-                  {p.name}
-                </span>
-                <span className="label text-grey-500">
-                  {/* Joined here rather than concatenated: a non-host looking at
-                      their own row used to get a separator with nothing in
-                      front of it. */}
-                  {[p.id === room.hostId ? t("host") : "", p.id === playerId ? t("you") : ""]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </li>
-            ))}
+            {room.players.map((p) => {
+              // The host cannot moderate themselves — there is nothing to
+              // kick or mute a person out of their own seat for.
+              const canModerate = isHost && p.id !== playerId;
+              return (
+                <li
+                  key={p.id}
+                  className="flex items-baseline justify-between gap-3 border-b border-grey-300 py-3"
+                  style={{ fontSize: "var(--text-body)" }}
+                >
+                  <span
+                    className={`flex min-w-0 items-center gap-2 ${p.connected ? "" : "text-grey-300 line-through"}`}
+                  >
+                    <span className="truncate">{p.name}</span>
+                    {p.muted && (
+                      <span className="label shrink-0 border border-accent px-1 py-0.5 text-[10px] text-accent">
+                        {t("muted")}
+                      </span>
+                    )}
+                  </span>
+                  <span className="label flex shrink-0 items-center gap-3 text-grey-500">
+                    {/* Joined here rather than concatenated: a non-host looking
+                        at their own row used to get a separator with nothing
+                        in front of it. */}
+                    {[p.id === room.hostId ? t("host") : "", p.id === playerId ? t("you") : ""]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    {canModerate && (
+                      <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onSetMuted(p.id, !p.muted)}
+                          className="press font-mono text-[10px] uppercase tracking-wider hover:text-accent"
+                        >
+                          {p.muted ? t("unmute") : t("mute")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(t("kickConfirm"))) onKick(p.id);
+                          }}
+                          className="press font-mono text-[10px] uppercase tracking-wider hover:text-accent"
+                        >
+                          {t("kick")}
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>
@@ -223,7 +257,7 @@ export function LobbyScreen({
         {/* Deliberately not pushed to the bottom of the column: the left side
             grows with the player list, and mt-auto would drag the host's only
             action below the fold. */}
-        <div className="grid grid-cols-[auto_1fr_auto] gap-4">
+        <div className="grid grid-cols-[auto_1fr] gap-4">
           {isHost ? (
             <>
               <Button
@@ -247,9 +281,6 @@ export function LobbyScreen({
               {t("waitingForHost")}
             </div>
           )}
-          <Button variant="outline" onClick={onLeave} className="w-auto">
-            {t("leave")}
-          </Button>
         </div>
       </section>
     </div>

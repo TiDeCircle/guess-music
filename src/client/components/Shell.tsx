@@ -15,11 +15,14 @@ export function Shell({
   status,
   volumeStep,
   onVolumeChange,
+  onLeave,
   children,
 }: {
   status: ConnectionStatus;
   volumeStep: number;
   onVolumeChange: (step: number) => void;
+  /** Present only while sitting in a Room — one Leave, reachable from every screen. */
+  onLeave?: () => void;
   children: ReactNode;
 }) {
   const { lang, setLang, t } = useLang();
@@ -76,6 +79,16 @@ export function Shell({
                 ))}
               </div>
             </div>
+
+            {onLeave && (
+              <button
+                type="button"
+                onClick={onLeave}
+                className="label press flex h-10 items-center border border-ink px-3 hover:border-accent hover:text-accent"
+              >
+                {t("leave")}
+              </button>
+            )}
           </div>
         </div>
       </header>

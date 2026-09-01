@@ -72,6 +72,18 @@ export const STRINGS = {
   startMatch: { th: "เริ่มเกม", en: "Start match" },
   backToLobby: { th: "เปลี่ยนเพลง / ความยาก", en: "Change songs or difficulty" },
   leave: { th: "ออก", en: "Leave" },
+  leaveConfirm: {
+    th: "ออกจากห้องตอนนี้ คะแนนรอบนี้จะหายไป — ยืนยันไหม",
+    en: "Leaving now drops your progress this round — are you sure?",
+  },
+  mute: { th: "ปิดเสียง", en: "Mute" },
+  unmute: { th: "เปิดเสียง", en: "Unmute" },
+  muted: { th: "ปิดเสียงแล้ว", en: "Muted" },
+  kick: { th: "เตะออก", en: "Kick" },
+  kickConfirm: {
+    th: "เตะผู้เล่นนี้ออกจากห้อง เข้าใหม่ด้วยรหัสเดิมไม่ได้แล้ว — ยืนยันไหม",
+    en: "Kick this player? They won't be able to rejoin with the code — are you sure?",
+  },
   copied: { th: "คัดลอกแล้ว", en: "Copied" },
   shareHint: {
     th: "ส่งรหัสนี้ให้เพื่อน แล้วให้กดเข้าห้อง",

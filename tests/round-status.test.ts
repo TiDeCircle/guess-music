@@ -14,6 +14,7 @@ const player = (id: string, connected = true): Player => ({
   name: id,
   score: 0,
   connected,
+  muted: false,
 });
 
 describe("isFinalStretch", () => {

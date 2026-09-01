@@ -7,6 +7,8 @@ import {
   lockSchema,
   createRoomSchema,
   joinRoomSchema,
+  kickSchema,
+  muteSchema,
   readySchema,
   reactionSchema,
   unlockSchema,
@@ -214,6 +216,42 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       const parsed = reactionSchema.safeParse(payload);
       if (!parsed.success) return;
       store.recordReaction(ctx.room, ctx.playerId, parsed.data.reaction);
+    });
+
+    socket.on("room:kick", (payload) => {
+      const ctx = contextFor(socket);
+      if (!ctx) return;
+      const parsed = kickSchema.safeParse(payload);
+      if (!parsed.success) return;
+      try {
+        const removed = store.kick(ctx.room, ctx.playerId, parsed.data.playerId);
+        // Their state has already changed; tell only them, and only once —
+        // everyone left in the room learns it from the next room:state.
+        if (removed?.socketId) {
+          const kickedSocket = io.sockets.sockets.get(removed.socketId);
+          if (kickedSocket) {
+            kickedSocket.emit("room:kicked", {
+              message: "หัวห้องเตะคุณออกจากห้องแล้ว",
+            });
+            void kickedSocket.leave(roomChannel(ctx.room.code));
+            bindings.delete(kickedSocket.id);
+          }
+        }
+      } catch (err) {
+        fail(socket, "kick", messageFor(err));
+      }
+    });
+
+    socket.on("room:mute", (payload) => {
+      const ctx = contextFor(socket);
+      if (!ctx) return;
+      const parsed = muteSchema.safeParse(payload);
+      if (!parsed.success) return;
+      try {
+        store.setMuted(ctx.room, ctx.playerId, parsed.data.playerId, parsed.data.muted);
+      } catch (err) {
+        fail(socket, "mute", messageFor(err));
+      }
     });
 
     socket.on("disconnect", () => {

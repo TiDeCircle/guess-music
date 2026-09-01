@@ -149,6 +149,14 @@ export type Room = {
   locked: boolean;
   emptyAt: number | null;
   timer: NodeJS.Timeout | null;
+  /** Reaction stamps from these players are dropped before they reach anyone. */
+  mutedPlayerIds: Set<string>;
+  /**
+   * Sessions the host has kicked. Kept for the Room's whole life, not just the
+   * grace period — a kick that only works once is not a kick, and the room
+   * code is the only gate this game has.
+   */
+  kickedSessionIds: Set<string>;
 };
 
 export type RoomEvents = {
@@ -227,6 +235,8 @@ export class RoomStore {
       locked: false,
       emptyAt: null,
       timer: null,
+      mutedPlayerIds: new Set(),
+      kickedSessionIds: new Set(),
     };
     this.rooms.set(code, room);
     this.events.onListingChanged();
@@ -241,6 +251,10 @@ export class RoomStore {
   ): { room: Room; player: ServerPlayer } {
     const room = this.rooms.get(code);
     if (!room) throw new RoomError("no_room", "ไม่พบห้องนี้");
+
+    if (sessionId && room.kickedSessionIds.has(sessionId)) {
+      throw new RoomError("kicked", "คุณถูกเตะออกจากห้องนี้แล้ว");
+    }
 
     // A returning player takes back their own seat, score included, even
     // mid-match. This is the whole point of the grace period.
@@ -376,6 +390,48 @@ export class RoomStore {
     room.locked = locked;
     this.events.onState(room);
     this.events.onListingChanged();
+  }
+
+  /**
+   * Host removes a player and blacklists their session, so the room code —
+   * this game's only gate — cannot walk them straight back in.
+   *
+   * Returns the removed player so the caller can find their live socket, or
+   * `null` if they had already left on their own.
+   */
+  kick(room: Room, hostId: string, targetId: string): ServerPlayer | null {
+    this.requireHost(room, hostId);
+    if (targetId === hostId) {
+      throw new RoomError("self_target", "เตะตัวเองไม่ได้");
+    }
+    const target = room.players.get(targetId);
+    if (!target) return null;
+
+    room.kickedSessionIds.add(target.sessionId);
+    room.players.delete(targetId);
+    this.events.onState(room);
+    this.events.onListingChanged();
+    return target;
+  }
+
+  /**
+   * Host stops or resumes a player's reaction stamps.
+   *
+   * There is no chat or voice in this game, so a stamp spammed at 400ms
+   * intervals is the only way one player can be loud at everyone else's
+   * expense — muting drops it silently rather than removing them outright.
+   */
+  setMuted(room: Room, hostId: string, targetId: string, muted: boolean): void {
+    this.requireHost(room, hostId);
+    if (targetId === hostId) {
+      throw new RoomError("self_target", "ปิดเสียงตัวเองไม่ได้");
+    }
+    if (!room.players.has(targetId)) {
+      throw new RoomError("no_player", "ไม่พบผู้เล่นนี้");
+    }
+    if (muted) room.mutedPlayerIds.add(targetId);
+    else room.mutedPlayerIds.delete(targetId);
+    this.events.onState(room);
   }
 
   /** The Rooms a stranger is allowed to see. */
@@ -745,6 +801,7 @@ export class RoomStore {
   /** Broadcast a live reaction stamp with per-player rate limiting. */
   recordReaction(room: Room, playerId: string, reaction: ReactionId): void {
     if (!room.players.has(playerId)) return;
+    if (room.mutedPlayerIds.has(playerId)) return;
     const now = Date.now();
     const last = this.lastReactionAt.get(playerId) ?? 0;
     if (now - last < 400) return;
@@ -772,6 +829,7 @@ export function toRoomState(room: Room): RoomState {
     name: p.name,
     score: p.score,
     connected: p.connected,
+    muted: room.mutedPlayerIds.has(p.id),
   }));
 
   let round: RoundView | null = null;

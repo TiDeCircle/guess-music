@@ -155,6 +155,85 @@ describe("room lifecycle", () => {
   });
 });
 
+describe("moderation", () => {
+  it("removes a kicked player and reports who was removed", () => {
+    const { room, ids } = seed(2);
+    const removed = store.kick(room, ids[0]!, ids[1]!);
+    expect(removed?.id).toBe(ids[1]);
+    expect(room.players.has(ids[1]!)).toBe(false);
+  });
+
+  it("blocks a kicked player's session from rejoining, even by code", () => {
+    const { room, ids } = seed(2);
+    const sessionId = room.players.get(ids[1]!)!.sessionId;
+    store.kick(room, ids[0]!, ids[1]!);
+    expect(() => store.joinRoom(room.code, "P1", "sock-1b", sessionId)).toThrow();
+  });
+
+  it("only lets the host kick", () => {
+    const { room, ids } = seed(2);
+    expect(() => store.kick(room, ids[1]!, ids[0]!)).toThrow(/host/);
+    expect(room.players.has(ids[0]!)).toBe(true);
+  });
+
+  it("refuses the host kicking themselves", () => {
+    const { room, ids } = seed(2);
+    expect(() => store.kick(room, ids[0]!, ids[0]!)).toThrow();
+    expect(room.players.has(ids[0]!)).toBe(true);
+  });
+
+  it("mutes one player's reactions without touching anyone else's", () => {
+    const seenPlayers: string[] = [];
+    store = new RoomStore({
+      onState: () => {},
+      onClosed: () => {},
+      onListingChanged: () => {},
+      onReaction: (_room, playerId) => seenPlayers.push(playerId),
+    });
+    const { room, ids } = seed(2);
+    store.setMuted(room, ids[0]!, ids[1]!, true);
+
+    store.recordReaction(room, ids[1]!, "fire");
+    store.recordReaction(room, ids[0]!, "gg");
+
+    expect(seenPlayers).toEqual([ids[0]]);
+  });
+
+  it("stops muting once toggled back off", () => {
+    const seenPlayers: string[] = [];
+    store = new RoomStore({
+      onState: () => {},
+      onClosed: () => {},
+      onListingChanged: () => {},
+      onReaction: (_room, playerId) => seenPlayers.push(playerId),
+    });
+    const { room, ids } = seed(2);
+    store.setMuted(room, ids[0]!, ids[1]!, true);
+    store.setMuted(room, ids[0]!, ids[1]!, false);
+
+    store.recordReaction(room, ids[1]!, "fire");
+    expect(seenPlayers).toEqual([ids[1]]);
+  });
+
+  it("only lets the host mute", () => {
+    const { room, ids } = seed(2);
+    expect(() => store.setMuted(room, ids[1]!, ids[0]!, true)).toThrow(/host/);
+  });
+
+  it("refuses the host muting themselves", () => {
+    const { room, ids } = seed(2);
+    expect(() => store.setMuted(room, ids[0]!, ids[0]!, true)).toThrow();
+  });
+
+  it("reports muted status on the player list", () => {
+    const { room, ids } = seed(2);
+    store.setMuted(room, ids[0]!, ids[1]!, true);
+    const state = toRoomState(room);
+    expect(state.players.find((p) => p.id === ids[1])!.muted).toBe(true);
+    expect(state.players.find((p) => p.id === ids[0])!.muted).toBe(false);
+  });
+});
+
 describe("lockstep sequence", () => {
   it("does not start the clock until every client has its audio", async () => {
     const { room, ids } = seed(2);

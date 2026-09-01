@@ -41,11 +41,22 @@ export default function Page() {
     }
   }, [game.error]);
 
+  /**
+   * A round in progress has something to lose; the lobby and the recap do
+   * not. Only the former is worth a confirm before it throws the room away.
+   */
+  const handleLeave = () => {
+    const midMatch = inRound || phase === "reveal";
+    if (midMatch && !window.confirm(t("leaveConfirm"))) return;
+    game.leave();
+  };
+
   return (
     <Shell
       status={game.status}
       volumeStep={game.volumeStep}
       onVolumeChange={game.setVolumeStep}
+      onLeave={game.room ? handleLeave : undefined}
     >
       {game.error && (
         <div
@@ -92,7 +103,8 @@ export default function Page() {
             setStarting(true);
             game.startMatch();
           }}
-          onLeave={game.leave}
+          onKick={game.kick}
+          onSetMuted={game.setMuted}
           starting={starting}
         />
       )}
@@ -143,7 +155,6 @@ export default function Page() {
             game.startMatch();
           }}
           onBackToLobby={game.returnToLobby}
-          onLeave={game.leave}
         />
       )}
 

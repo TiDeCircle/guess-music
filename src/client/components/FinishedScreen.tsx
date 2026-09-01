@@ -16,7 +16,6 @@ export function FinishedScreen({
   onTogglePreview,
   onPlayAgain,
   onBackToLobby,
-  onLeave,
 }: {
   room: RoomState;
   playerId: string | null;
@@ -24,7 +23,6 @@ export function FinishedScreen({
   onTogglePreview: (trackId: string, url: string) => void;
   onPlayAgain: () => void;
   onBackToLobby: () => void;
-  onLeave: () => void;
 }) {
   const { t } = useLang();
   const isHost = room.hostId === playerId;
@@ -65,20 +63,16 @@ export function FinishedScreen({
           )}
 
           {/* Play again keeps the settings; back to the lobby is how you change
-              them without everyone leaving and passing a new room code around. */}
-          <div className="mt-10 grid gap-4">
-            {isHost && (
-              <>
-                <Button onClick={onPlayAgain}>{t("playAgain")}</Button>
-                <Button variant="outline" onClick={onBackToLobby}>
-                  {t("backToLobby")}
-                </Button>
-              </>
-            )}
-            <Button variant="outline" onClick={onLeave}>
-              {t("leave")}
-            </Button>
-          </div>
+              them without everyone leaving and passing a new room code around.
+              Leaving lives in the header now, reachable from every screen. */}
+          {isHost && (
+            <div className="mt-10 grid gap-4">
+              <Button onClick={onPlayAgain}>{t("playAgain")}</Button>
+              <Button variant="outline" onClick={onBackToLobby}>
+                {t("backToLobby")}
+              </Button>
+            </div>
+          )}
         </section>
 
         <section className="md:col-span-7">

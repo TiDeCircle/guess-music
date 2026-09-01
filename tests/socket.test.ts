@@ -466,5 +466,71 @@ describe("socket wiring", () => {
     expect(hostReaction.reaction).toBe("fire");
     expect(hostReaction.playerId).toBe(guestReaction.playerId);
   });
+
+  describe("moderation", () => {
+    it("kicks a player, tells only them, and blocks them from rejoining", async () => {
+      const host = await client();
+      const guest = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      const joined = await emit<any>(guest, "room:join", {
+        code: created.data.code,
+        name: "Guest",
+      });
+
+      // Both listeners go up before the kick fires: the host's state and the
+      // guest's notice land close enough together that attaching after either
+      // await risks missing the other, the same trap the reveal tests avoid.
+      const kicked = new Promise<any>((r) => guest.once("room:kicked", r));
+      const hostSeesGone = nextState(host, (s) => s.players.length === 1);
+      host.emit("room:kick", { playerId: joined.data.playerId });
+
+      expect((await kicked).message).toBeTruthy();
+
+      const state = await hostSeesGone;
+      expect(state.players.map((p: any) => p.id)).not.toContain(joined.data.playerId);
+
+      // The room code is the only gate this game has — a kick that lets the
+      // same session straight back in is not a kick.
+      const rejoin = await emit<any>(guest, "room:join", {
+        code: created.data.code,
+        name: "Guest",
+        sessionId: joined.data.sessionId,
+      });
+      expect(rejoin.ok).toBe(false);
+    });
+
+    it("only lets the host kick", async () => {
+      const host = await client();
+      const guest = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
+
+      const refused = new Promise<any>((r) => guest.once("room:error", r));
+      guest.emit("room:kick", { playerId: created.data.playerId });
+      expect((await refused).message).toMatch(/host/);
+    });
+
+    it("mutes a player's reaction so nobody else receives it", async () => {
+      const host = await client();
+      const guest = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      const joined = await emit<any>(guest, "room:join", {
+        code: created.data.code,
+        name: "Guest",
+      });
+
+      host.emit("room:mute", { playerId: joined.data.playerId, muted: true });
+      await nextState(
+        guest,
+        (s) => s.players.find((p: any) => p.id === joined.data.playerId)?.muted === true,
+      );
+
+      let received = false;
+      host.once("room:reaction", () => (received = true));
+      guest.emit("room:react", { reaction: "fire" });
+      await new Promise((r) => setTimeout(r, 300));
+      expect(received).toBe(false);
+    });
+  });
 });
 

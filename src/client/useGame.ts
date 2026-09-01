@@ -205,6 +205,13 @@ export function useGame() {
       writeSession(null);
       setRoom(null);
     });
+    socket.on("room:kicked", ({ message }) => {
+      writeSession(null);
+      setRoom(null);
+      setPlayerId(null);
+      audioRef.current?.stop();
+      setError(message);
+    });
 
     return () => {
       socket.close();
@@ -562,6 +569,16 @@ export function useGame() {
     socketRef.current?.emit("room:react", { reaction });
   }, []);
 
+  /** Host only: remove a player and block their session from rejoining. */
+  const kick = useCallback((targetPlayerId: string) => {
+    socketRef.current?.emit("room:kick", { playerId: targetPlayerId });
+  }, []);
+
+  /** Host only: stop or resume a player's reaction stamps reaching the room. */
+  const setMuted = useCallback((targetPlayerId: string, muted: boolean) => {
+    socketRef.current?.emit("room:mute", { playerId: targetPlayerId, muted });
+  }, []);
+
   return {
     status,
     room,
@@ -594,6 +611,8 @@ export function useGame() {
     serverNow,
     reactions,
     react,
+    kick,
+    setMuted,
   };
 }
 
