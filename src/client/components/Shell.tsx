@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LANGS, useLang } from "@/client/i18n";
 import type { ConnectionStatus } from "@/client/useGame";
+import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { VolumeControl } from "./VolumeControl";
 
@@ -31,7 +32,10 @@ export function Shell({
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-ink">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 md:px-8">
-          <span className="label truncate font-bold">{t("appName")}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <Logo className="h-6 w-6 shrink-0" />
+            <span className="label truncate font-bold">{t("appName")}</span>
+          </span>
 
           <div className="flex items-center gap-3 md:gap-6">
             {/* Nothing at all while the connection is healthy. The mark that

@@ -9,6 +9,7 @@ import { ARTISTS } from "@/data/seeds/artists";
 import { MODE_ORDER } from "@/shared/modes";
 import { SONG_INDEX_SIZE } from "@/data/song-index-meta";
 import { Button } from "./Button";
+import { Logo } from "./Logo";
 import { FieldLabel } from "./Shell";
 import { RoomBrowser } from "./RoomBrowser";
 
@@ -102,13 +103,19 @@ export function HomeScreen({
       <div className="grid gap-12 md:grid-cols-12 md:gap-8">
         <section className="md:col-span-7">
           {/* The one place the design shouts. A Swiss poster earns its
-              whitespace by putting a single large statement against it. */}
-          <h1
-            className="rise text-balance font-bold leading-[0.86] tracking-[-0.03em]"
+              whitespace by putting a single large statement against it. The
+              mark sits in the same font-size context as the word so it scales
+              with it exactly, rather than tracking the clamp at a second
+              breakpoint of its own. */}
+          <div
+            className="flex items-center gap-4 md:gap-6"
             style={{ fontSize: "clamp(3rem, 13vw, var(--text-display))" }}
           >
-            {t("appName")}
-          </h1>
+            <Logo className="rise shrink-0" style={{ width: "0.78em", height: "0.78em" }} />
+            <h1 className="rise text-balance font-bold leading-[0.86] tracking-[-0.03em]">
+              {t("appName")}
+            </h1>
+          </div>
           <p
             className="rise mt-6 max-w-md text-pretty text-grey-500"
             style={{
