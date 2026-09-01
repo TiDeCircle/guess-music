@@ -3,7 +3,7 @@
 import type { RoomState } from "@/shared/types";
 import type { ReactionId } from "@/shared/protocol";
 import { MODES, unlockedMs } from "@/shared/modes";
-import { useLang } from "@/client/i18n";
+import { useLang, type StringKey } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
 import { ReactionPicker } from "./ReactionPicker";
 
@@ -148,9 +148,13 @@ export function RevealScreen({
                     {reactions?.[r.playerId] && (
                       <span
                         key={reactions[r.playerId]?.id}
-                        className="animate-fade-in font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/60 bg-paper/90 px-1 py-0.5 ml-2"
+                        className="animate-fade-in relative ml-2 rounded-lg border border-accent bg-paper px-2 py-1 text-[11px] font-medium text-accent"
                       >
-                        [{reactions[r.playerId]?.reaction.toUpperCase()}]
+                        {t(`reaction.${reactions[r.playerId]!.reaction}` as StringKey)}
+                        <span
+                          aria-hidden
+                          className="absolute -left-[3px] top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 border-b border-l border-accent bg-paper"
+                        />
                       </span>
                     )}
                   </span>

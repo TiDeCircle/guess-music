@@ -66,6 +66,7 @@ export const STRINGS = {
     en: "Shown on the home page — anyone can join",
   },
   players: { th: "ผู้เล่น", en: "Players" },
+  streak: { th: "สตรีค", en: "Streak" },
   host: { th: "หัวห้อง", en: "Host" },
   you: { th: "คุณ", en: "You" },
   waitingForHost: { th: "รอหัวห้องเริ่มเกม", en: "Waiting for the host" },

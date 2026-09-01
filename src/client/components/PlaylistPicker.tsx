@@ -26,6 +26,10 @@ type Step = PlaylistGroup | "artist" | null;
  * Picking returns to the top step on purpose: that step names the current
  * choice under its own heading, so it doubles as the summary and the lobby
  * never needs a separate line repeating what the room is about to play.
+ *
+ * `disabled` leaves browsing untouched — the group tiles, the artist search,
+ * every step of the navigator still works for a player who cannot change the
+ * choice — and only turns the leaf that would actually commit one off.
  */
 export function PlaylistPicker({
   value,
@@ -44,18 +48,6 @@ export function PlaylistPicker({
     value.kind === "artist"
       ? value.artist
       : t(`playlist.${value.playlist}` as StringKey);
-
-  // A player who cannot change it does not need a navigator, only the answer.
-  if (disabled) {
-    return (
-      <div>
-        <FieldLabel>{t("playlist")}</FieldLabel>
-        <p className="mt-2 py-4" style={{ fontSize: "var(--text-body)" }}>
-          {label}
-        </p>
-      </div>
-    );
-  }
 
   if (step === null) {
     return (
@@ -126,12 +118,21 @@ export function PlaylistPicker({
                 key={a.name}
                 type="button"
                 aria-pressed={active}
-                onClick={() => {
-                  onSelect({ kind: "artist", artist: a.name });
-                  setStep(null);
-                }}
+                disabled={disabled}
+                onClick={
+                  disabled
+                    ? undefined
+                    : () => {
+                        onSelect({ kind: "artist", artist: a.name });
+                        setStep(null);
+                      }
+                }
                 className={`flex w-full items-baseline justify-between border-b border-grey-300 px-3 py-3 text-left transition-colors last:border-b-0 ${
-                  active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
+                  active
+                    ? "bg-ink text-paper"
+                    : disabled
+                      ? "cursor-not-allowed text-grey-500"
+                      : "bg-paper text-ink hover:bg-grey-100"
                 }`}
               >
                 <span style={{ fontSize: "var(--text-body)" }}>{a.name}</span>
@@ -161,12 +162,21 @@ export function PlaylistPicker({
               key={id}
               type="button"
               aria-pressed={active}
-              onClick={() => {
-                onSelect({ kind: "playlist", playlist: id });
-                setStep(null);
-              }}
+              disabled={disabled}
+              onClick={
+                disabled
+                  ? undefined
+                  : () => {
+                      onSelect({ kind: "playlist", playlist: id });
+                      setStep(null);
+                    }
+              }
               className={`flex min-h-20 flex-col justify-between p-3 text-left transition-colors md:p-4 ${
-                active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
+                active
+                  ? "bg-ink text-paper"
+                  : disabled
+                    ? "cursor-not-allowed bg-paper text-grey-500"
+                    : "bg-paper text-ink hover:bg-grey-100"
               }`}
             >
               <span className="text-[0.9375rem] font-medium">

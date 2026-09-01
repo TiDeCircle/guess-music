@@ -71,6 +71,8 @@ export type Player = {
   name: string;
   /** Total across the current Match. */
   score: number;
+  /** Consecutive correct answers right now. Resets to 0 on a wrong or missed one. */
+  streak: number;
   connected: boolean;
   /** Host has silenced this Player's reaction stamps. Visible to everyone. */
   muted: boolean;

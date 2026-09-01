@@ -14,8 +14,8 @@ const mockTrack = {
 
 describe("computeMatchAwards", () => {
   const players: Player[] = [
-    { id: "p1", name: "Alice", score: 500, connected: true, muted: false },
-    { id: "p2", name: "Bob", score: 400, connected: true, muted: false },
+    { id: "p1", name: "Alice", score: 500, streak: 0, connected: true, muted: false },
+    { id: "p2", name: "Bob", score: 400, streak: 0, connected: true, muted: false },
   ];
 
   it("awards lightning-fast to the player with fastest average correct answer", () => {

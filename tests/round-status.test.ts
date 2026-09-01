@@ -13,6 +13,7 @@ const player = (id: string, connected = true): Player => ({
   id,
   name: id,
   score: 0,
+  streak: 0,
   connected,
   muted: false,
 });

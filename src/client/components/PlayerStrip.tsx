@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { RoomState } from "@/shared/types";
 import type { ReactionId } from "@/shared/protocol";
-import { useLang } from "@/client/i18n";
+import { useLang, type StringKey } from "@/client/i18n";
 import { answeredSummary } from "@/client/roundStatus";
 import { prefersReducedMotion } from "@/client/motionPrefs";
 import { FieldLabel } from "./Shell";
@@ -206,15 +206,36 @@ export function PlayerStrip({
                 <span className="truncate">{p.name}</span>
                 {p.id === playerId ? <span className="shrink-0 opacity-75">· {t("you")}</span> : null}
                 {reactions?.[p.id] && (
+                  // The one rounded, tailed shape in the app. Everything else
+                  // here is a hairline rectangle on purpose, but a reaction is
+                  // a thing someone said, not a piece of the scoreboard — it
+                  // earns the one exception.
                   <span
                     key={reactions[p.id]?.id}
-                    className="animate-fade-in font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/60 bg-paper/90 px-1 py-0.5 shrink-0"
+                    className="animate-fade-in relative shrink-0 rounded-lg border border-accent bg-paper px-2 py-1 text-[11px] font-medium text-accent"
                   >
-                    [{reactions[p.id]?.reaction.toUpperCase()}]
+                    {t(`reaction.${reactions[p.id]!.reaction}` as StringKey)}
+                    <span
+                      aria-hidden
+                      className="absolute -left-[3px] top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 border-b border-l border-accent bg-paper"
+                    />
                   </span>
                 )}
               </span>
-              <span className="numeric label relative shrink-0">{p.score}</span>
+              <span className="relative flex shrink-0 items-center gap-1.5">
+                {/* Two in a row and up — one correct answer is not yet a
+                    streak, and flagging it every round would make the badge
+                    noise rather than a signal. */}
+                {p.streak >= 2 && (
+                  <span
+                    className="label border border-accent px-1 py-0.5 text-[10px] text-accent"
+                    title={`${t("streak")} ×${p.streak}`}
+                  >
+                    ×{p.streak}
+                  </span>
+                )}
+                <span className="numeric label">{p.score}</span>
+              </span>
             </div>
           );
         })}

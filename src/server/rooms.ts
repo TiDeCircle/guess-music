@@ -839,6 +839,7 @@ export function toRoomState(room: Room): RoomState {
     id: p.id,
     name: p.name,
     score: p.score,
+    streak: p.streak,
     connected: p.connected,
     muted: room.mutedPlayerIds.has(p.id),
   }));

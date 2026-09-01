@@ -13,6 +13,10 @@ import { FieldLabel } from "./Shell";
  * that stops, Heardle is a ladder of steps that grows. That picture is the
  * whole difference between the modes, and it lands faster than the sentence
  * underneath it.
+ *
+ * `disabled` does not hide the grid — a player who cannot change this still
+ * wants to see what the host is choosing between, only the tap itself is
+ * off.
  */
 export function ModePicker({
   value,
@@ -25,17 +29,6 @@ export function ModePicker({
 }) {
   const { t } = useLang();
 
-  if (disabled) {
-    return (
-      <div>
-        <FieldLabel>{t("gameMode")}</FieldLabel>
-        <p className="mt-2 py-4" style={{ fontSize: "var(--text-body)" }}>
-          {t(`mode.${value}` as StringKey)}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div>
       <FieldLabel>{t("gameMode")}</FieldLabel>
@@ -47,9 +40,14 @@ export function ModePicker({
               key={id}
               type="button"
               aria-pressed={active}
-              onClick={() => onSelect(id)}
+              disabled={disabled}
+              onClick={disabled ? undefined : () => onSelect(id)}
               className={`flex min-h-44 flex-col p-4 text-left transition-colors ${
-                active ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-grey-100"
+                active
+                  ? "bg-ink text-paper"
+                  : disabled
+                    ? "cursor-not-allowed bg-paper text-grey-500"
+                    : "bg-paper text-ink hover:bg-grey-100"
               }`}
             >
               <span className="numeric label">
