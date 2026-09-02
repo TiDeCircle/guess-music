@@ -114,6 +114,17 @@ export const STRINGS = {
     th: "กติกาเดียวกัน แต่ทั้งห้องใช้ขั้นร่วมกัน ใครปลดล็อคก็เปลืองของทุกคน และได้แต้มก้อนเดียวกัน",
     en: "Same rules, but the room shares one ladder — unlocking spends everyone's, and the points land on everyone.",
   },
+  // The merged picker card: what Heardle is, before the host has picked
+  // head-to-head or co-op. mode.heardle / mode.heardle-coop above stay as
+  // the full names — RoomBrowser still shows one of those for a room whose
+  // choice is already made.
+  "mode.heardle-group": { th: "Heardle", en: "Heardle" },
+  "mode.heardle-group.hint": {
+    th: "ได้ยินแค่ 1 วิแรก แล้วพิมพ์ชื่อเพลง ยังไม่รู้ก็ปลดล็อคให้ยาวขึ้นได้ แต่แต้มลด — เลือกได้ว่าจะแข่งกันหรือช่วยกัน",
+    en: "You hear one second, then type the title. Unlock more if you need it — for fewer points. Play it head to head or as a team.",
+  },
+  heardleModeCompete: { th: "แข่งกัน", en: "Head to head" },
+  heardleModeCoop: { th: "ช่วยกัน", en: "Co-op" },
 
   pointsNow: { th: "แต้มตอนนี้", en: "Worth now" },
   unlocked: { th: "ปลดล็อคแล้ว", en: "Unlocked" },
