@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PlaylistGroup, PlaylistId, SongSource } from "@/shared/types";
+import type { GameModeId, PlaylistGroup, PlaylistId, SongSource } from "@/shared/types";
 import { PLAYLISTS, PLAYLIST_GROUPS } from "@/data/seeds";
+import { MODES } from "@/shared/modes";
+import { sourceSuitsMode } from "@/shared/match-config";
 import { ARTISTS } from "@/data/seeds/artists";
 import { useLang, type StringKey } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
@@ -33,10 +35,12 @@ type Step = PlaylistGroup | "artist" | null;
  * choice — and only turns the leaf that would actually commit one off.
  */
 export function PlaylistPicker({
+  mode,
   value,
   disabled,
   onSelect,
 }: {
+  mode: GameModeId;
   value: SongSource;
   disabled: boolean;
   onSelect: (source: SongSource) => void;
@@ -44,6 +48,18 @@ export function PlaylistPicker({
   const { t } = useLang();
   const [step, setStep] = useState<Step>(null);
   const [filter, setFilter] = useState("");
+
+  // A mode that asks what a song is *from* can only be played against a
+  // playlist that says. The rest are not offered rather than greyed out —
+  // there is nothing a host could learn from a tile they can never pick — and
+  // the artist search goes with them, since an artist pool has no shows in it.
+  const playable = (id: PlaylistId) =>
+    sourceSuitsMode(mode, { kind: "playlist", playlist: id });
+  const groups = PLAYLIST_GROUPS.map(({ group, ids }) => ({
+    group,
+    ids: ids.filter(playable),
+  })).filter(({ ids }) => ids.length > 0);
+  const showArtist = !MODES[mode].requiresSeries;
 
   const label =
     value.kind === "artist"
@@ -55,7 +71,7 @@ export function PlaylistPicker({
       <div>
         <FieldLabel>{t("playlist")}</FieldLabel>
         <div className="swap-from-left mt-2 grid grid-cols-2 gap-px bg-ink sm:grid-cols-4">
-          {PLAYLIST_GROUPS.map(({ group, ids }) => (
+          {groups.map(({ group, ids }) => (
             <TopCell
               key={group}
               title={t(GROUP_LABEL[group])}
@@ -68,6 +84,7 @@ export function PlaylistPicker({
               onClick={() => setStep(group)}
             />
           ))}
+          {showArtist && (
           <TopCell
             title={t("byArtist")}
             active={value.kind === "artist"}
@@ -81,6 +98,7 @@ export function PlaylistPicker({
               setStep("artist");
             }}
           />
+          )}
         </div>
       </div>
     );
@@ -150,7 +168,7 @@ export function PlaylistPicker({
     );
   }
 
-  const ids = PLAYLIST_GROUPS.find((g) => g.group === step)!.ids;
+  const ids = groups.find((g) => g.group === step)?.ids ?? [];
 
   return (
     <div>

@@ -2,7 +2,7 @@
 
 import type { GameModeId } from "@/shared/types";
 import { MODE_ORDER } from "@/shared/modes";
-import { useLang } from "@/client/i18n";
+import { useLang, type StringKey } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
 
 /**
@@ -10,9 +10,12 @@ import { FieldLabel } from "./Shell";
  * other two steps mean.
  *
  * Each card carries a drawing of the clip it gives you: Quiz is one solid bar
- * that stops, Heardle is a ladder of steps that grows. That picture is the
- * whole difference between the modes, and it lands faster than the sentence
- * underneath it.
+ * that stops, Heardle is a ladder of steps that grows. That picture lands
+ * faster than the sentence underneath it.
+ *
+ * Anime draws Quiz's bar, because its clip really is Quiz's clip — what
+ * differs is the question, and the hint is where a question lives. Redrawing
+ * the shape to look different would be a picture of nothing.
  *
  * Heardle is one card, not two: `heardle` and `heardle-coop` differ by a
  * single flag server-side (`MODES[id].shared` — see src/shared/modes/heardle.ts),
@@ -49,8 +52,9 @@ export function ModePicker({
               onSelect={onSelect}
             />
           ) : (
-            <QuizCard
+            <PlainCard
               key={id}
+              id={id}
               index={i}
               active={id === value}
               disabled={disabled}
@@ -58,17 +62,29 @@ export function ModePicker({
             />
           ),
         )}
+        {/* Three cards over two columns leaves the grid's black line showing
+            through an empty last cell. */}
+        {MODE_ORDER.length % 2 === 1 && (
+          <div aria-hidden className="hidden bg-paper sm:block" />
+        )}
       </div>
     </div>
   );
 }
 
-function QuizCard({
+/**
+ * A mode that is only itself: one tap, no second choice inside it. Its name
+ * and hint come from its id, so adding a fourth costs a card in `MODE_ORDER`
+ * and two lines of copy.
+ */
+function PlainCard({
+  id,
   index,
   active,
   disabled,
   onSelect,
 }: {
+  id: GameModeId;
   index: number;
   active: boolean;
   disabled: boolean;
@@ -91,13 +107,13 @@ function QuizCard({
     >
       <span className="numeric label">{String(index + 1).padStart(2, "0")}</span>
       <span className="mt-3 font-semibold" style={{ fontSize: "var(--text-body)" }}>
-        {t("mode.quiz")}
+        {t(`mode.${id}` as StringKey)}
       </span>
 
       <ClipShape stages={0} />
 
       <span className={`label mt-3 leading-relaxed ${active ? "text-grey-300" : "text-grey-500"}`}>
-        {t("mode.quiz.hint")}
+        {t(`mode.${id}.hint` as StringKey)}
       </span>
     </button>
   );

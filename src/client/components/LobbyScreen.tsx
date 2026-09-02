@@ -10,6 +10,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FieldLabel } from "./Shell";
 import { ModePicker } from "./ModePicker";
 import { PlaylistPicker } from "./PlaylistPicker";
+import { defaultSourceForMode } from "@/shared/match-config";
 
 const DIFFICULTY_LABEL: Record<DifficultyId, StringKey> = {
   easy: "difficultyEasy",
@@ -188,12 +189,19 @@ export function LobbyScreen({
           <ModePicker
             value={room.config.mode}
             disabled={!isHost}
-            onSelect={(mode) => patch({ mode })}
+            // Mode and source travel together, so the lobby is never
+            // briefly showing a pairing the server would refuse. Switching
+            // away leaves the source alone: an anime playlist is a perfectly
+            // good pool for "which song is this?".
+            onSelect={(mode) =>
+              patch({ mode, source: defaultSourceForMode(mode, room.config.source) })
+            }
           />
         )}
 
         {step === 1 && (
           <PlaylistPicker
+            mode={room.config.mode}
             value={room.config.source}
             disabled={!isHost}
             onSelect={(source) => patch({ source })}

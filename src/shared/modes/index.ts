@@ -107,14 +107,13 @@ export const MODES: Record<GameModeId, GameMode> = {
 };
 
 /**
- * The order the picker lays them out in: familiar first, then the twist.
+ * The order the picker lays them out in: familiar first, then the twists.
  *
  * `heardle-coop` is not in here — it is a `GameModeId` a Room can genuinely
  * run, but not a card of its own in `ModePicker`, which folds it into the
  * "Heardle" card as a second choice instead of a third parallel one. Anything
- * that needs to enumerate every actual mode (there is nothing today) should
- * read `MODES`, not this.
+ * that needs to enumerate every actual mode should read `MODES`, not this.
  */
-export const MODE_ORDER: GameModeId[] = ["quiz", "heardle"];
+export const MODE_ORDER: GameModeId[] = ["quiz", "heardle", "anime"];
 
 export const DEFAULT_MODE: GameModeId = "quiz";
