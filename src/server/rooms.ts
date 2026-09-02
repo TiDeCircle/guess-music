@@ -16,6 +16,7 @@ import { streakMultiplier } from "@/shared/scoring";
 import { DEFAULT_PLAYLIST } from "@/data/seeds";
 import { makeRng } from "@/shared/rng";
 import { DEFAULT_MODE, MODES, type RoundPlan } from "@/shared/modes";
+import { sourceSuitsMode } from "@/shared/match-config";
 import {
   MAX_PLAYERS,
   ROOM_CODE_ALPHABET,
@@ -377,6 +378,11 @@ export class RoomStore {
     this.requireHost(room, playerId);
     if (room.phase !== "lobby" && room.phase !== "finished") {
       throw new RoomError("in_match", "เปลี่ยนค่าระหว่างเล่นไม่ได้");
+    }
+    // The picker never offers a mode against a Source it cannot use, but a
+    // socket payload is not the picker.
+    if (!sourceSuitsMode(config.mode, config.source)) {
+      throw new RoomError("bad_config", "โหมดนี้เล่นกับเพลย์ลิสต์นี้ไม่ได้");
     }
     room.config = config;
     this.events.onState(room);

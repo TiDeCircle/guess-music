@@ -120,6 +120,20 @@ describe("room lifecycle", () => {
     });
   });
 
+  // The picker never offers this pairing, but a socket payload is not the
+  // picker — and a match started on it would have no rounds to play.
+  it("refuses a mode and source that cannot play together", () => {
+    const { room, ids } = seed(1);
+    expect(() =>
+      store.setConfig(room, ids[0]!, {
+        mode: "anime",
+        source: { kind: "playlist", playlist: "thai-classic" },
+        difficulty: "medium",
+        roundCount: 5,
+      }),
+    ).toThrow(/เล่นกับ/);
+  });
+
   it("only lets the host change the config", () => {
     const { room, ids } = seed(2);
     expect(() =>
