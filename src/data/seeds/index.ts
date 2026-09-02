@@ -10,6 +10,7 @@ import { LUK_THUNG_TRACK_IDS } from "./luk-thung";
 import { SAD_TRACK_IDS } from "./sad";
 import { THAI_2019_2020_TRACK_IDS } from "./thai-2019-2020";
 import { TIKTOK_TRACK_IDS } from "./tiktok";
+import { ANIME_SERIES, ANIME_TRACK_IDS } from "./anime";
 
 /**
  * Where a Playlist's Tracks come from.
@@ -157,6 +158,19 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
     group: "kpop",
     source: { kind: "artists", country: "TH", artists: KPOP_ARTISTS },
   },
+
+  "anime-all": {
+    id: "anime-all",
+    group: "anime",
+    // The only playlist that names what each song is from, which is the whole
+    // of what makes the anime mode playable — see src/data/seeds/anime.ts.
+    source: {
+      kind: "tracks",
+      country: "TH",
+      trackIds: ANIME_TRACK_IDS,
+      series: ANIME_SERIES,
+    },
+  },
 };
 
 /** Display order within each group, and the order of the groups themselves. */
@@ -177,6 +191,7 @@ export const PLAYLIST_GROUPS: Array<{ group: PlaylistGroup; ids: PlaylistId[] }>
   },
   { group: "intl", ids: ["intl-now", "intl-classic", "intl-tiktok"] },
   { group: "kpop", ids: ["kpop-now", "kpop-classic"] },
+  { group: "anime", ids: ["anime-all"] },
 ];
 
 export const PLAYLIST_IDS = PLAYLIST_GROUPS.flatMap((g) => g.ids);

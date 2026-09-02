@@ -11,6 +11,7 @@ const GROUP_LABEL: Record<PlaylistGroup, StringKey> = {
   thai: "groupThai",
   intl: "groupIntl",
   kpop: "groupKpop",
+  anime: "groupAnime",
 };
 
 /** Which panel is open. `null` is the top level. */

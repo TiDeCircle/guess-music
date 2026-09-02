@@ -44,10 +44,11 @@ export type PlaylistId =
   | "intl-classic"
   | "intl-tiktok"
   | "kpop-now"
-  | "kpop-classic";
+  | "kpop-classic"
+  | "anime-all";
 
 /** Only used to arrange the picker; players choose a Playlist, not a group. */
-export type PlaylistGroup = "thai" | "intl" | "kpop";
+export type PlaylistGroup = "thai" | "intl" | "kpop" | "anime";
 
 export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
 

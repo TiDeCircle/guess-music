@@ -47,6 +47,7 @@ export const playlistSchema = z.enum([
   "intl-tiktok",
   "kpop-now",
   "kpop-classic",
+  "anime-all",
 ]);
 export const difficultySchema = z.enum(["easy", "medium", "hard", "extreme"]);
 export const modeSchema = z.enum(["quiz", "heardle", "heardle-coop", "anime"]);

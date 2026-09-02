@@ -164,6 +164,7 @@ export const STRINGS = {
   groupThai: { th: "เพลงไทย", en: "Thai" },
   groupIntl: { th: "เพลงสากล", en: "International" },
   groupKpop: { th: "เคป็อป", en: "K-pop" },
+  groupAnime: { th: "อนิเมะ", en: "Anime" },
 
   "playlist.thai-now": { th: "ไทยฮิตตอนนี้", en: "Thai — charting now" },
   "playlist.thai-buzz": { th: "ฮิตติดกระแส", en: "Thai — trending" },
@@ -179,6 +180,7 @@ export const STRINGS = {
   "playlist.intl-tiktok": { th: "ไวรัล TikTok", en: "Global — TikTok viral" },
   "playlist.kpop-now": { th: "เคป็อปฮิตตอนนี้", en: "K-pop — charting now" },
   "playlist.kpop-classic": { th: "เคป็อปฮิตตลอดกาล", en: "K-pop — all-time" },
+  "playlist.anime-all": { th: "เพลงอนิเมะ", en: "Anime — openings & endings" },
 
   /* Shown under the chart playlists, which refresh themselves daily. */
   chartHint: { th: "อัปเดตทุกวัน", en: "Refreshed daily" },
