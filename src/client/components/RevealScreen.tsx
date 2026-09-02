@@ -82,6 +82,12 @@ export function RevealScreen({
               {reveal.track.title}
             </h2>
             <p className="label mt-3 text-grey-500">{reveal.track.artist}</p>
+            {/* Only the anime playlists carry this, and in the anime mode it
+                *is* the answer — so it takes the accent rather than sitting in
+                the artist's grey as one more piece of metadata. */}
+            {reveal.track.series && (
+              <p className="label mt-2 text-accent">{reveal.track.series}</p>
+            )}
           </div>
         </div>
       </section>
