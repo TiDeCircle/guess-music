@@ -49,7 +49,7 @@ export const playlistSchema = z.enum([
   "kpop-classic",
 ]);
 export const difficultySchema = z.enum(["easy", "medium", "hard", "extreme"]);
-export const modeSchema = z.enum(["quiz", "heardle", "heardle-coop"]);
+export const modeSchema = z.enum(["quiz", "heardle", "heardle-coop", "anime"]);
 
 export const createRoomSchema = z.object({ name: playerNameSchema });
 

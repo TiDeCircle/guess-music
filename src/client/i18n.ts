@@ -126,6 +126,12 @@ export const STRINGS = {
   heardleModeCompete: { th: "แข่งกัน", en: "Head to head" },
   heardleModeCoop: { th: "ช่วยกัน", en: "Co-op" },
 
+  "mode.anime": { th: "ทายอนิเมะ", en: "Guess the anime" },
+  "mode.anime.hint": {
+    th: "ฟังเพลงเปิด แล้วเลือกว่ามาจากเรื่องไหน ตัวเลือกเป็นชื่อเรื่อง ไม่ใช่ชื่อเพลง",
+    en: "Hear the opening and name the show. The tiles are series, not songs.",
+  },
+
   pointsNow: { th: "แต้มตอนนี้", en: "Worth now" },
   unlocked: { th: "ปลดล็อคแล้ว", en: "Unlocked" },
   unlockedTeam: { th: "ทั้งห้องปลดล็อคแล้ว", en: "The room has unlocked" },
