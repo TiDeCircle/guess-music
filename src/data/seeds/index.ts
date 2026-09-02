@@ -35,6 +35,12 @@ export type PlaylistSource =
       kind: "tracks";
       country: string;
       trackIds: readonly string[];
+      /**
+       * iTunes track id to the name of the anime it is from. Only the anime
+       * Playlists fill this in, and it is what makes a mode whose answer is a
+       * series playable at all.
+       */
+      series?: Readonly<Record<string, string>>;
     }
   | {
       kind: "artists";

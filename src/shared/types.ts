@@ -17,6 +17,13 @@ export type Track = {
   previewUrl: string;
   /** Release year, used to narrow a Playlist to an era. 0 when unknown. */
   year: number;
+  /**
+   * Which anime this song is from. Present only on Tracks that came from a
+   * Playlist shipping a series map — every other Playlist leaves it unset,
+   * because iTunes has nothing to say about it and a guess would be worse than
+   * a blank.
+   */
+  series?: string;
 };
 
 /**

@@ -101,7 +101,12 @@ export async function buildPool(
   } else if (source.kind === "tracks") {
     // No randomisation here: the list is the playlist. Variety between matches
     // comes from the recently-played filter in the round builder.
-    tracks = await getFixedTracks(playlist, source.trackIds, source.country);
+    tracks = await getFixedTracks(
+      playlist,
+      source.trackIds,
+      source.country,
+      source.series,
+    );
   } else {
     const window = { from: source.yearFrom, to: source.yearTo };
     const ordered = shuffle(source.artists, rng);

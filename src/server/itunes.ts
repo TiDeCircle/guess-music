@@ -297,11 +297,17 @@ export async function getFixedTracks(
   key: string,
   ids: readonly string[],
   country: string,
+  series?: Readonly<Record<string, string>>,
 ): Promise<Track[]> {
   const hit = fixedCache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
-  const tracks = dedupeByTitle(await lookupTracks(ids, country));
+  // The list names the recordings, so it can also name what each one is from —
+  // which is the only way that fact reaches a Track at all.
+  const tracks = dedupeByTitle(await lookupTracks(ids, country)).map((t) => {
+    const name = series?.[t.id];
+    return name ? { ...t, series: name } : t;
+  });
   fixedCache.set(key, { at: Date.now(), value: tracks });
   return tracks;
 }
