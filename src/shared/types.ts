@@ -59,8 +59,12 @@ export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
  * The split between them is social, not mechanical: `heardle` gives every
  * player their own ladder and score, `heardle-coop` gives the whole Room one of
  * each.
+ *
+ * `anime` is the one that changes the question rather than the delivery: the
+ * tiles are shows, not songs, and it is playable only against a Playlist that
+ * ships the mapping.
  */
-export type GameModeId = "quiz" | "heardle" | "heardle-coop";
+export type GameModeId = "quiz" | "heardle" | "heardle-coop" | "anime";
 
 /** One of the four options shown in a Round. */
 /**

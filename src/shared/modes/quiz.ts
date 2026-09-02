@@ -14,6 +14,7 @@ export const quizMode: GameMode = {
   id: "quiz",
   shared: false,
   typed: false,
+  requiresSeries: false,
 
   buildRounds(input: BuildRoundsInput): RoundPlan[] {
     return buildChoiceRounds(input, (d) => ({

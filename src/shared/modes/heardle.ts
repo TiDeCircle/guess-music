@@ -57,6 +57,9 @@ function buildRounds({ pool, count, difficulty, rng, exclude }: BuildRoundsInput
       index: rounds.length,
       answer,
       choices: [],
+      // Nothing on screen to be right, but the reveal still names what the
+      // answer was.
+      correctChoiceId: answer.id,
       clipMs,
       answerWindowMs,
       stagesMs,
@@ -99,6 +102,7 @@ export const heardleMode: GameMode = {
   id: "heardle",
   shared: false,
   typed: true,
+  requiresSeries: false,
   buildRounds,
   judge,
 };
@@ -114,6 +118,7 @@ export const heardleCoopMode: GameMode = {
   id: "heardle-coop",
   shared: true,
   typed: true,
+  requiresSeries: false,
   buildRounds,
   judge,
 };

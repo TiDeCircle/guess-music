@@ -8,6 +8,12 @@ export type RoundPlan = {
   answer: Track;
   /** The options on screen. Empty in a typed mode, which shows none. */
   choices: Choice[];
+  /**
+   * Which `choices` entry is the right one. Not always the answer's track id:
+   * an anime Round's tiles are shows, so the winning tile is named by the
+   * series. The mode builds the choices, so the mode is what can say.
+   */
+  correctChoiceId: string;
   clipMs: number;
   answerWindowMs: number;
   /**
@@ -74,20 +80,30 @@ export type GameMode = {
    * the reveal.
    */
   typed: boolean;
+  /**
+   * True when the mode asks about something only a series-bearing Playlist can
+   * answer. Naming the requirement rather than a Playlist group is what lets a
+   * second anime Playlist become selectable by carrying the data, with nothing
+   * here to update.
+   */
+  requiresSeries: boolean;
   buildRounds(input: BuildRoundsInput): RoundPlan[];
   judge(input: JudgeInput): Judgement;
 };
 
 export { quizMode, CHOICE_COUNT } from "./quiz";
 export { heardleMode, heardleCoopMode, unlockedMs } from "./heardle";
+export { animeMode, SERIES_CHOICE_COUNT } from "./anime";
 
 import { quizMode } from "./quiz";
 import { heardleCoopMode, heardleMode } from "./heardle";
+import { animeMode } from "./anime";
 
 export const MODES: Record<GameModeId, GameMode> = {
   quiz: quizMode,
   heardle: heardleMode,
   "heardle-coop": heardleCoopMode,
+  anime: animeMode,
 };
 
 /**

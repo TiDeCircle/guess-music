@@ -743,7 +743,7 @@ export class RoomStore {
     const next = match.rounds[match.index + 1];
     room.reveal = {
       index: match.index,
-      correctChoiceId: plan.answer.id,
+      correctChoiceId: plan.correctChoiceId,
       track: plan.answer,
       nextPreviewUrl: next ? next.answer.previewUrl : null,
       results: [...room.players.values()].map((p) => {

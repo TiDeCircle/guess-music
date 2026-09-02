@@ -141,6 +141,7 @@ export function buildChoiceRounds(
       index: rounds.length,
       answer,
       choices: shuffle([answer, ...decoys].map(toChoice), rng),
+      correctChoiceId: answer.id,
       clipMs,
       answerWindowMs,
       stagesMs,
