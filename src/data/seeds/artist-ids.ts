@@ -58,7 +58,6 @@ export const ARTIST_IDS: Record<string, number> = {
   "ENHYPEN": 1541011620,
   "EXO": 657630070,
   "F.HERO": 1408535810,
-  "Faii": 1539293210,
   "fellow fellow": 599575151,
   "Fiixd": 1164834091,
   "GAVIN:D": 1334222762,
@@ -190,7 +189,6 @@ export const ARTIST_IDS: Record<string, number> = {
   "Y Not 7": 301722167,
   "Younggu": 1451715451,
   "YOUNGOHM": 1234516722,
-  "Zani": 1329058873,
   "Zeal": 93522843,
   "ZEROBASEONE": 1693315406,
 };

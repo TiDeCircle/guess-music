@@ -5,7 +5,6 @@ export const THAI_RAP_ARTISTS = [
   "Daboyway",
   "Dajim",
   "F.HERO",
-  "Faii",
   "Fiixd",
   "Illslick",
   "Joey Boy",
@@ -21,5 +20,4 @@ export const THAI_RAP_ARTISTS = [
   "Urboytj",
   "YOUNGOHM",
   "Younggu",
-  "Zani",
 ];
