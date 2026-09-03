@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Image from "next/image";
 import type { RoomListing } from "@/shared/types";
 import { useLang, type StringKey } from "@/client/i18n";
 import { NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from "@/shared/protocol";
@@ -147,32 +146,6 @@ export function HomeScreen({
             style={{ fontSize: "var(--text-title)" }}
           />
         </section>
-      </div>
-
-      {/* The one photograph in a design that otherwise draws everything flat.
-          A UI object pretending to be real (see VinylRecord) breaks the
-          illusion the moment it does; a full-bleed editorial photo is a
-          different job — the Swiss poster's own move, not a decoration
-          borrowed from a stock site. It sits in normal flow, its own row
-          between the statement and the data, rather than floating behind
-          either: overlapping the name field would have made it unreadable
-          for however long the fade took to clear, and there is no fade that
-          clears a field somebody is about to type into. `100vw` rather than
-          the column's own width, because a bleed that stops at the reading
-          column is not a bleed. */}
-      <div
-        aria-hidden
-        className="rise relative left-1/2 right-1/2 hidden h-56 w-screen -translate-x-1/2 border-y border-ink md:mt-14 md:block md:h-72 lg:h-80"
-        style={{ animationDelay: `${STAGGER_MS}ms` }}
-      >
-        <Image
-          src="/hero-dancer.jpg"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[center_48%] grayscale contrast-125"
-        />
       </div>
 
       {/* A band of its own, spanning the whole field.
