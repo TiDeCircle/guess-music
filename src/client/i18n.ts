@@ -172,6 +172,7 @@ export const STRINGS = {
   "playlist.thai-90s": { th: "ไทยยุค 90", en: "Thai — the 90s" },
   "playlist.thai-2000s": { th: "ไทยยุค 2000s", en: "Thai — the 2000s" },
   "playlist.thai-2020s": { th: "ไทยฮิต 2020s", en: "Thai — the 2020s" },
+  "playlist.thai-rap": { th: "แร็ป/ฮิปฮอปไทย", en: "Thai — rap & hip-hop" },
   "playlist.thai-luk-thung": { th: "ลูกทุ่ง", en: "Thai — luk thung" },
   "playlist.thai-sad": { th: "เพลงเศร้า", en: "Thai — sad songs" },
   "playlist.thai-2019-2020": { th: "ไทย 2019-2020", en: "Thai — 2019-2020" },

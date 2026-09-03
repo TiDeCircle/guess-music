@@ -3,6 +3,7 @@ import { THAI_ARTISTS } from "./thai";
 import { THAI_90S_ARTISTS } from "./thai90s";
 import { THAI_2000S_ARTISTS } from "./thai2000s";
 import { THAI_2020S_ARTISTS } from "./thai2020s";
+import { THAI_RAP_ARTISTS } from "./thai-rap";
 import { INTL_ARTISTS } from "./intl";
 import { KPOP_ARTISTS } from "./kpop";
 import { HITS_TRACK_IDS } from "./hits";
@@ -110,6 +111,11 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
       yearFrom: 2020,
     },
   },
+  "thai-rap": {
+    id: "thai-rap",
+    group: "thai",
+    source: { kind: "artists", country: "TH", artists: THAI_RAP_ARTISTS },
+  },
   "thai-luk-thung": {
     id: "thai-luk-thung",
     group: "thai",
@@ -182,6 +188,7 @@ export const PLAYLIST_GROUPS: Array<{ group: PlaylistGroup; ids: PlaylistId[] }>
       "thai-buzz",
       "thai-classic",
       "thai-2020s",
+      "thai-rap",
       "thai-2000s",
       "thai-90s",
       "thai-luk-thung",
