@@ -80,7 +80,7 @@ const EMPTY_ROOM_TTL_MS = 60_000;
 const DEFAULT_ROUND_COUNT = 10;
 
 /** Answers from the last few Matches, avoided when picking new ones. */
-const RECENT_MATCH_MEMORY = 3;
+const RECENT_MATCH_MEMORY = 8;
 
 /**
  * Who the unlocks belong to in a shared mode.
