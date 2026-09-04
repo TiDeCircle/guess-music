@@ -44,6 +44,19 @@ const ARTIST_LOOKUP_LIMIT = 60;
 
 const REQUEST_TIMEOUT_MS = 8_000;
 
+/**
+ * One retry, and only one.
+ *
+ * Apple's chart feed answers in a second or two when it is well and times out
+ * outright when it is not, often enough to have taken matches down twice in an
+ * afternoon — and the attempt seconds later almost always lands. The cost is
+ * the failure path getting slower: a match that was going to fail now takes
+ * about sixteen seconds to say so instead of eight. That is the right trade
+ * when the second attempt usually means there is nothing to say.
+ */
+const REQUEST_ATTEMPTS = 2;
+const RETRY_PAUSE_MS = 400;
+
 type CacheEntry<T> = { at: number; value: T };
 
 /**
@@ -131,15 +144,47 @@ function toTrack(r: ItunesResult): Track | null {
   };
 }
 
-async function getJson<T>(url: string | URL): Promise<T> {
+/** A reply that arrived and said no, keeping the status so callers can judge it. */
+class HttpError extends Error {
+  constructor(readonly status: number, url: string | URL) {
+    super(`${status} for ${url}`);
+    this.name = "HttpError";
+  }
+}
+
+/**
+ * Whether a second attempt could plausibly do better.
+ *
+ * A timeout or a dropped connection is worth another go. A 4xx is not: the same
+ * request will be turned down the same way, and trying again only spends
+ * somebody's patience and Apple's rate limit.
+ */
+function worthRetrying(err: unknown): boolean {
+  return !(err instanceof HttpError) || err.status >= 500;
+}
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchJson<T>(url: string | URL): Promise<T> {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: { "User-Agent": "guess-music/0.1" },
   });
-  if (!res.ok) throw new Error(`${res.status} for ${url}`);
+  if (!res.ok) throw new HttpError(res.status, url);
   // The search endpoint answers with content-type text/javascript, so res.json()
   // is fine but worth knowing if this ever starts failing oddly.
   return (await res.json()) as T;
+}
+
+async function getJson<T>(url: string | URL): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchJson<T>(url);
+    } catch (err) {
+      if (attempt >= REQUEST_ATTEMPTS || !worthRetrying(err)) throw err;
+      await pause(RETRY_PAUSE_MS);
+    }
+  }
 }
 
 /** Drop repeats of the same song arriving as different releases. */

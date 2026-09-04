@@ -8,6 +8,7 @@
 import { createServer } from "node:http";
 import next from "next";
 import { attachSocketServer } from "./src/server/socket";
+import { warmCharts } from "./src/server/catalog";
 
 const dev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT ?? 3004);
@@ -35,6 +36,9 @@ async function main() {
 
   server.listen(port, hostname, () => {
     console.log(`guess-music listening on http://${hostname}:${port}`);
+    // Not awaited: the site is already serving, and this only decides whether
+    // the first player to pick a chart playlist waits on Apple or not.
+    void warmCharts();
   });
 }
 

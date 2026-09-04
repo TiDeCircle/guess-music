@@ -159,4 +159,35 @@ async function buildArtistPool(artist: string): Promise<Track[]> {
   return tracks;
 }
 
+/**
+ * Fetch the chart feeds before anybody asks for them.
+ *
+ * Every restart begins with an empty cache, and the chart feed is the one
+ * upstream that is regularly slow — so without this the first player to pick a
+ * "now" playlist is the one who waits for it, and the one who sees the error
+ * when it times out. One warm fetch spares every room for the next day.
+ *
+ * Only the charts. The artist playlists read from the search and lookup
+ * endpoints, which have never been the problem, and warming those would mean
+ * dozens of requests on every restart for a risk that is not there.
+ *
+ * Deliberately forgiving: it runs in the background, one country at a time so
+ * a restart is not a burst at Apple, and a failure is left to the first match
+ * to retry. A cold start is not a failed start.
+ */
+export async function warmCharts(): Promise<void> {
+  const countries = new Set<string>();
+  for (const def of Object.values(PLAYLISTS)) {
+    if (def.source.kind === "chart") countries.add(def.source.country);
+  }
+
+  for (const country of countries) {
+    try {
+      await getChartTracks(country, CHART_DEPTH);
+    } catch (err) {
+      console.warn(`[warm] chart ${country} not warmed:`, (err as Error).message);
+    }
+  }
+}
+
 export const CATALOG_TUNING = { ARTISTS_PER_MATCH, MIN_POOL, CHART_DEPTH };

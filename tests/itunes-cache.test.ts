@@ -121,3 +121,62 @@ describe("iTunes cache when a refresh fails", () => {
     await expect(getFixedTracks("cold", ["1"], "TH")).rejects.toThrow("timeout");
   });
 });
+
+describe("iTunes requests that fail once", () => {
+  beforeEach(() => clearItunesCache());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /** Fails the first n calls, then answers. */
+  function failThenRespond(failures: number) {
+    let calls = 0;
+    const spy = vi.fn(async () => {
+      calls += 1;
+      if (calls <= failures) throw new Error("timeout");
+      return new Response(JSON.stringify({ results: [result(1, "ความเชื่อ")] }));
+    });
+    vi.stubGlobal("fetch", spy);
+    return spy;
+  }
+
+  it("tries once more, because the retry is usually the one that lands", async () => {
+    const fetchSpy = failThenRespond(1);
+
+    const pool = await getFixedTracks("buzz", ["1"], "TH");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(pool.map((t) => t.id)).toEqual(["1"]);
+  });
+
+  it("gives up rather than hammering Apple past the second attempt", async () => {
+    const fetchSpy = failThenRespond(99);
+
+    await expect(getFixedTracks("buzz", ["1"], "TH")).rejects.toThrow("timeout");
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a 404, which will say the same thing next time", async () => {
+    const spy = vi.fn(async () => new Response("nope", { status: 404 }));
+    vi.stubGlobal("fetch", spy);
+
+    await expect(getFixedTracks("buzz", ["1"], "TH")).rejects.toThrow(/404/);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does retry a 503, which might not", async () => {
+    let calls = 0;
+    const spy = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) return new Response("busy", { status: 503 });
+      return new Response(JSON.stringify({ results: [result(1, "ความเชื่อ")] }));
+    });
+    vi.stubGlobal("fetch", spy);
+
+    const pool = await getFixedTracks("buzz", ["1"], "TH");
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(pool.map((t) => t.id)).toEqual(["1"]);
+  });
+});
