@@ -46,8 +46,56 @@ const REQUEST_TIMEOUT_MS = 8_000;
 
 type CacheEntry<T> = { at: number; value: T };
 
-const artistCache = new Map<string, CacheEntry<Track[]>>();
-const chartCache = new Map<string, CacheEntry<Track[]>>();
+/**
+ * A day-long cache that also collapses concurrent misses.
+ *
+ * The cache alone is not enough once more than a few Rooms are playing: it
+ * holds finished answers, so N Rooms pressing start in the same moment on a
+ * cold key send N identical requests to Apple. That is both the fastest way to
+ * reach the rate limit and what turns one slow response into N Matches that
+ * will not start. Callers that arrive while a request is already flying wait on
+ * that request instead of opening their own.
+ *
+ * A failure is never cached, so the next Match tries again — but an entry that
+ * has merely gone stale is kept and served if the refresh fails. Songs a day
+ * old are a better answer than an error screen.
+ */
+class TrackCache<T> {
+  private readonly values = new Map<string, CacheEntry<T>>();
+  private readonly inflight = new Map<string, Promise<T>>();
+
+  async resolve(key: string, load: () => Promise<T>): Promise<T> {
+    const hit = this.values.get(key);
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+
+    const flying = this.inflight.get(key);
+    if (flying) return flying;
+
+    const pending = load()
+      .then((value) => {
+        this.values.set(key, { at: Date.now(), value });
+        return value;
+      })
+      .catch((err: unknown) => {
+        if (hit) return hit.value;
+        throw err;
+      })
+      .finally(() => {
+        this.inflight.delete(key);
+      });
+
+    this.inflight.set(key, pending);
+    return pending;
+  }
+
+  clear(): void {
+    this.values.clear();
+    this.inflight.clear();
+  }
+}
+
+const artistCache = new TrackCache<Track[]>();
+const chartCache = new TrackCache<Track[]>();
 
 type ItunesResult = {
   trackId?: number;
@@ -152,32 +200,28 @@ export async function getArtistTracksById(
   artistId: number,
   country: string,
 ): Promise<Track[]> {
-  const key = `${country}:id:${artistId}`;
-  const hit = artistCache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  return artistCache.resolve(`${country}:id:${artistId}`, async () => {
+    const url = new URL(LOOKUP_URL);
+    url.searchParams.set("id", String(artistId));
+    url.searchParams.set("entity", "song");
+    url.searchParams.set("limit", String(ARTIST_LOOKUP_LIMIT));
+    url.searchParams.set("country", country.toUpperCase());
 
-  const url = new URL(LOOKUP_URL);
-  url.searchParams.set("id", String(artistId));
-  url.searchParams.set("entity", "song");
-  url.searchParams.set("limit", String(ARTIST_LOOKUP_LIMIT));
-  url.searchParams.set("country", country.toUpperCase());
-
-  const body = await getJson<{ results?: ItunesResult[] }>(url);
-  const tracks: Track[] = [];
-  for (const r of body.results ?? []) {
-    // The first result is the artist record itself, which toTrack rejects.
-    const t = toTrack(r);
-    if (!t) continue;
-    // Apple also lists tracks where this artist is only a guest, and those are
-    // credited to someone else. In artist mode every option is supposed to be
-    // by the same act — a differing artist line under one tile would point
-    // straight at the answer.
-    if (t.artistId !== artistId) continue;
-    tracks.push(t);
-  }
-  const deduped = dedupeByTitle(tracks);
-  artistCache.set(key, { at: Date.now(), value: deduped });
-  return deduped;
+    const body = await getJson<{ results?: ItunesResult[] }>(url);
+    const tracks: Track[] = [];
+    for (const r of body.results ?? []) {
+      // The first result is the artist record itself, which toTrack rejects.
+      const t = toTrack(r);
+      if (!t) continue;
+      // Apple also lists tracks where this artist is only a guest, and those are
+      // credited to someone else. In artist mode every option is supposed to be
+      // by the same act — a differing artist line under one tile would point
+      // straight at the answer.
+      if (t.artistId !== artistId) continue;
+      tracks.push(t);
+    }
+    return dedupeByTitle(tracks);
+  });
 }
 
 /**
@@ -194,13 +238,9 @@ export async function getArtistTracks(
   const id = artistIdFor(artist);
   if (id !== undefined) return getArtistTracksById(id, country);
 
-  const key = `${country}:${artist.toLowerCase()}`;
-  const hit = artistCache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
-
-  const tracks = await searchArtist(artist, country);
-  artistCache.set(key, { at: Date.now(), value: tracks });
-  return tracks;
+  return artistCache.resolve(`${country}:${artist.toLowerCase()}`, () =>
+    searchArtist(artist, country),
+  );
 }
 
 export type YearWindow = { from?: number; to?: number };
@@ -285,7 +325,7 @@ export async function lookupTracks(
 }
 
 /** Cached list of hand-picked tracks, keyed the same way charts are. */
-const fixedCache = new Map<string, CacheEntry<Track[]>>();
+const fixedCache = new TrackCache<Track[]>();
 
 /**
  * A curated set of exact songs, resolved from ids.
@@ -299,17 +339,14 @@ export async function getFixedTracks(
   country: string,
   series?: Readonly<Record<string, string>>,
 ): Promise<Track[]> {
-  const hit = fixedCache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
-
-  // The list names the recordings, so it can also name what each one is from —
-  // which is the only way that fact reaches a Track at all.
-  const tracks = dedupeByTitle(await lookupTracks(ids, country)).map((t) => {
-    const name = series?.[t.id];
-    return name ? { ...t, series: name } : t;
-  });
-  fixedCache.set(key, { at: Date.now(), value: tracks });
-  return tracks;
+  return fixedCache.resolve(key, async () =>
+    // The list names the recordings, so it can also name what each one is from
+    // — which is the only way that fact reaches a Track at all.
+    dedupeByTitle(await lookupTracks(ids, country)).map((t) => {
+      const name = series?.[t.id];
+      return name ? { ...t, series: name } : t;
+    }),
+  );
 }
 
 type ChartFeed = { feed?: { results?: Array<{ id?: string }> } };
@@ -325,18 +362,14 @@ export async function getChartTracks(
   country: string,
   limit: number,
 ): Promise<Track[]> {
-  const key = `${country}:${limit}`;
-  const hit = chartCache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  return chartCache.resolve(`${country}:${limit}`, async () => {
+    const feed = await getJson<ChartFeed>(CHART_URL(country, limit));
+    const ids = (feed.feed?.results ?? [])
+      .map((r) => r.id)
+      .filter((id): id is string => Boolean(id));
 
-  const feed = await getJson<ChartFeed>(CHART_URL(country, limit));
-  const ids = (feed.feed?.results ?? [])
-    .map((r) => r.id)
-    .filter((id): id is string => Boolean(id));
-
-  const deduped = dedupeByTitle(await lookupTracks(ids, country));
-  chartCache.set(key, { at: Date.now(), value: deduped });
-  return deduped;
+    return dedupeByTitle(await lookupTracks(ids, country));
+  });
 }
 
 /** Exposed for tests and for a warm-up on boot. */
