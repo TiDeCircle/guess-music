@@ -252,7 +252,16 @@ export type RoomListing = {
   mode: GameModeId;
   playerCount: number;
   maxPlayers: number;
-  phase: RoomPhase;
+  /**
+   * Deliberately coarser than RoomPhase: a stranger on the home screen is
+   * asking "can I walk into this?", and lobby-or-not answers that.
+   *
+   * It is also what keeps the home screen cheap. The listing goes to every
+   * watcher on the site at once, so carrying the round-by-round phase would
+   * redraw all of them each time any room opened a round — the one broadcast
+   * that grows with rooms times watchers.
+   */
+  phase: "lobby" | "playing";
   source: SongSource;
   difficulty: DifficultyId;
 };

@@ -457,7 +457,9 @@ export class RoomStore {
         mode: room.config.mode,
         playerCount,
         maxPlayers: MAX_PLAYERS,
-        phase: room.phase,
+        // Everything past the lobby reads the same from outside — see
+        // RoomListing.
+        phase: room.phase === "lobby" ? "lobby" : "playing",
         source: room.config.source,
         difficulty: room.config.difficulty,
       });

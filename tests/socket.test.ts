@@ -406,6 +406,11 @@ describe("socket wiring", () => {
       watcher.emit("rooms:watch");
       const host = await client();
       const created = await emit<any>(host, "room:create", { name: "Host" });
+      // Wait for the room to actually reach the watcher before hiding it.
+      // Locking it in the same breath as creating it leaves the list exactly as
+      // it was, and a list nobody would see a difference in is not sent.
+      await nextListing(watcher, (rs) => rs.some((r) => r.code === created.data.code));
+
       host.emit("room:lock", { locked: true });
       await nextListing(watcher, (rs) => !rs.some((r) => r.code === created.data.code));
       host.emit("room:lock", { locked: false });
@@ -422,6 +427,54 @@ describe("socket wiring", () => {
       expect((await refused).message).toMatch(/host/);
     });
 
+    it("reports a room in a match as playing, whatever it is doing inside", async () => {
+      const watcher = await client();
+      watcher.emit("rooms:watch");
+      const host = await client();
+      const created = await emit<any>(host, "room:create", { name: "Host" });
+      host.emit("match:start");
+
+      const rooms = await nextListing(watcher, (rs) =>
+        rs.some((r) => r.code === created.data.code && r.phase !== "lobby"),
+      );
+
+      // The browser only ever asks "can I walk in?", so the wire carries lobby
+      // or playing and nothing narrower. Sending the round-by-round phase would
+      // redraw every home screen on the site each time any room turned a round.
+      expect(rooms.find((r) => r.code === created.data.code).phase).toBe("playing");
+    });
+
+    it("does not push the list again as a match turns its rounds", async () => {
+      const watcher = await client();
+      watcher.emit("rooms:watch");
+      const host = await client();
+      await emit<any>(host, "room:create", { name: "Host" });
+
+      const loadingState = nextState(host, (s) => s.phase === "loading" && s.round);
+      host.emit("match:start");
+      const loading = await loadingState;
+      host.emit("round:ready", { index: loading.round.index });
+      const playing = await nextState(host, (s) => s.phase === "playing");
+      await goLive(playing.round);
+      await emit(host, "round:answer", {
+        index: playing.round.index,
+        guess: playing.round.choices[0].id,
+      });
+
+      // Let the broadcast that starting the match earned go out first.
+      await new Promise((r) => setTimeout(r, 1_500));
+
+      // From here to the next round the room passes through a reveal and opens
+      // a fresh round, and none of it changes anything a watcher can see. This
+      // is the broadcast a site full of idle home screens used to pay for, once
+      // per room per round.
+      let pushes = 0;
+      watcher.on("rooms:listing", () => (pushes += 1));
+      await nextState(host, (s) => s.round?.index === 1, 20_000);
+      expect(pushes).toBe(0);
+      // Long enough to sit through a reveal and reach the next round.
+    }, 30_000);
+
     it("stops pushing the list once a watcher stops watching", async () => {
       const watcher = await client();
       watcher.emit("rooms:watch");
@@ -433,7 +486,9 @@ describe("socket wiring", () => {
       watcher.on("rooms:listing", () => (pushed = true));
       const host = await client();
       await emit<any>(host, "room:create", { name: "Host" });
-      await new Promise((r) => setTimeout(r, 500));
+      // Has to outlast the broadcast's debounce window, or an unwatch that did
+      // nothing at all would still look like it worked.
+      await new Promise((r) => setTimeout(r, 1_500));
       expect(pushed).toBe(false);
     });
   });

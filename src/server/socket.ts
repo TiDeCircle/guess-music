@@ -41,14 +41,27 @@ export function attachSocketServer(httpServer: HttpServer): Server {
   /**
    * The list is pushed rather than polled, but a single join can fire several
    * changes in a row, so the broadcast is collapsed into one tick.
+   *
+   * This is the one broadcast whose cost grows with the whole site rather than
+   * with one room: it goes to every home screen open anywhere, and every room
+   * playing feeds it. Two things keep it cheap — a window long enough that a
+   * busy site cannot make it run hot, and not sending a list nobody would see
+   * a difference in, which is most of them once a match is under way.
    */
+  const LISTING_DEBOUNCE_MS = 1_000;
   let listingTimer: NodeJS.Timeout | null = null;
+  /** The last list actually sent, so an unchanged one is not sent again. */
+  let lastListingSent: string | null = null;
   function broadcastListing(): void {
     if (listingTimer) return;
     listingTimer = setTimeout(() => {
       listingTimer = null;
-      io.to(BROWSER_CHANNEL).emit("rooms:listing", store.listRooms());
-    }, 150);
+      const rooms = store.listRooms();
+      const encoded = JSON.stringify(rooms);
+      if (encoded === lastListingSent) return;
+      lastListingSent = encoded;
+      io.to(BROWSER_CHANNEL).emit("rooms:listing", rooms);
+    }, LISTING_DEBOUNCE_MS);
     listingTimer.unref?.();
   }
 
