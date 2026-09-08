@@ -60,6 +60,7 @@ export function PlaylistPicker({
     ids: ids.filter(playable),
   })).filter(({ ids }) => ids.length > 0);
   const showArtist = !MODES[mode].requiresSeries;
+  const topCount = groups.length + (showArtist ? 1 : 0);
 
   const label =
     value.kind === "artist"
@@ -99,6 +100,14 @@ export function PlaylistPicker({
             }}
           />
           )}
+          {/* Same as the panel grid below: without these the black backing
+              shows through the empty cells of a short last row. */}
+          {blanks(topCount, 4).map((k) => (
+            <div key={k} aria-hidden className="hidden bg-paper sm:block" />
+          ))}
+          {blanks(topCount, 2).map((k) => (
+            <div key={k} aria-hidden className="bg-paper sm:hidden" />
+          ))}
         </div>
       </div>
     );
