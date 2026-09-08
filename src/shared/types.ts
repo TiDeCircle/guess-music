@@ -40,6 +40,7 @@ export type PlaylistId =
   | "thai-rap"
   | "thai-luk-thung"
   | "thai-sad"
+  | "thai-2012-2017"
   | "thai-2019-2020"
   | "intl-now"
   | "intl-classic"

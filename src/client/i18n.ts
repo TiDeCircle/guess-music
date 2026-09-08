@@ -175,6 +175,7 @@ export const STRINGS = {
   "playlist.thai-rap": { th: "แร็ป/ฮิปฮอปไทย", en: "Thai — rap & hip-hop" },
   "playlist.thai-luk-thung": { th: "ลูกทุ่ง", en: "Thai — luk thung" },
   "playlist.thai-sad": { th: "เพลงเศร้า", en: "Thai — sad songs" },
+  "playlist.thai-2012-2017": { th: "เพลง 2012-2017", en: "Thai — 2012-2017" },
   "playlist.thai-2019-2020": { th: "ไทย 2019-2020", en: "Thai — 2019-2020" },
   "playlist.intl-now": { th: "สากลฮิตตอนนี้", en: "Global — charting now" },
   "playlist.intl-classic": { th: "สากลฮิตตลอดกาล", en: "Global — all-time" },

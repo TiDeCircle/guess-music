@@ -9,6 +9,7 @@ import { KPOP_ARTISTS } from "./kpop";
 import { HITS_TRACK_IDS } from "./hits";
 import { LUK_THUNG_TRACK_IDS } from "./luk-thung";
 import { SAD_TRACK_IDS } from "./sad";
+import { THAI_2012_2017_TRACK_IDS } from "./thai-2012-2017";
 import { THAI_2019_2020_TRACK_IDS } from "./thai-2019-2020";
 import { TIKTOK_TRACK_IDS } from "./tiktok";
 import { ANIME_SERIES, ANIME_TRACK_IDS } from "./anime";
@@ -130,6 +131,13 @@ export const PLAYLISTS: Record<PlaylistId, PlaylistDef> = {
     // src/data/seeds/sad-source.csv for what was asked for and what was found.
     source: { kind: "tracks", country: "TH", trackIds: SAD_TRACK_IDS },
   },
+  "thai-2012-2017": {
+    id: "thai-2012-2017",
+    group: "thai",
+    // A CSV the user brought in, resolved the same way thai-buzz was — see
+    // src/data/seeds/thai-2012-2017-source.csv for what was asked for.
+    source: { kind: "tracks", country: "TH", trackIds: THAI_2012_2017_TRACK_IDS },
+  },
   "thai-2019-2020": {
     id: "thai-2019-2020",
     group: "thai",
@@ -193,6 +201,7 @@ export const PLAYLIST_GROUPS: Array<{ group: PlaylistGroup; ids: PlaylistId[] }>
       "thai-90s",
       "thai-luk-thung",
       "thai-sad",
+      "thai-2012-2017",
       "thai-2019-2020",
     ],
   },
