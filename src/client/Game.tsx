@@ -11,9 +11,9 @@ import { PlayScreen } from "@/client/components/PlayScreen";
 import { CountdownScreen } from "@/client/components/CountdownScreen";
 import { RevealScreen } from "@/client/components/RevealScreen";
 import { FinishedScreen } from "@/client/components/FinishedScreen";
-import { readPresetPlaylist } from "@/client/presetPlaylist";
+import { readPresetSource } from "@/client/preset";
 import { sourceSuitsMode } from "@/shared/match-config";
-import type { PlaylistId } from "@/shared/types";
+import type { SongSource } from "@/shared/types";
 
 /**
  * One page. Which screen shows is a function of the room phase the server
@@ -29,14 +29,14 @@ export function Game() {
   /** A leave was requested mid-round and is waiting on confirmation. */
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   /**
-   * The Playlist a playlist page's "play" link asked for, held until this
+   * The Song Source a public page's "play" link asked for, held until this
    * visitor is sitting in a room they host. Read after mount: the server
    * render has no query string to agree with.
    */
-  const [preset, setPreset] = useState<PlaylistId | null>(null);
+  const [preset, setPreset] = useState<SongSource | null>(null);
 
   useEffect(() => {
-    setPreset(readPresetPlaylist(window.location.search));
+    setPreset(readPresetSource(window.location.search));
   }, []);
 
   // Applied once, and only by a Host — joining somebody else's room with the
@@ -46,9 +46,8 @@ export function Game() {
     const room = game.room;
     if (!preset || !room || !game.playerId || room.phase !== "lobby") return;
     if (room.hostId === game.playerId) {
-      const source = { kind: "playlist", playlist: preset } as const;
-      if (sourceSuitsMode(room.config.mode, source)) {
-        game.setConfig({ ...room.config, source });
+      if (sourceSuitsMode(room.config.mode, preset)) {
+        game.setConfig({ ...room.config, source: preset });
       }
     }
     setPreset(null);
@@ -109,7 +108,7 @@ export function Game() {
         <HomeScreen
           rooms={game.roomList}
           busy={joining || game.status !== "online"}
-          presetPlaylist={preset}
+          presetSource={preset}
           onCreate={async (name) => {
             setJoining(true);
             // Take the audio permission on the same tap that creates the room:

@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import type { PlaylistId, RoomListing } from "@/shared/types";
+import type { RoomListing, SongSource } from "@/shared/types";
 import { useLang, type StringKey } from "@/client/i18n";
-import { NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from "@/shared/protocol";
+import { MAX_PLAYERS, NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from "@/shared/protocol";
 import { PLAYLIST_GROUPS, PLAYLIST_IDS } from "@/data/seeds";
 import { ARTISTS } from "@/data/seeds/artists";
 import { MODE_ORDER } from "@/shared/modes";
 import { SONG_INDEX_SIZE } from "@/data/song-index-meta";
-import { playlistPath } from "@/shared/site";
+import { ARTISTS_PATH, playlistPath } from "@/shared/site";
 import { Button } from "./Button";
 import { Logo } from "./Logo";
 import { FieldLabel } from "./Shell";
@@ -43,14 +43,14 @@ export function HomeScreen({
   onJoin,
   rooms,
   busy,
-  presetPlaylist,
+  presetSource,
 }: {
   onCreate: (name: string) => void;
   onJoin: (code: string, name: string) => void;
   rooms: RoomListing[];
   busy: boolean;
-  /** Set when a playlist page's link brought the visitor here. */
-  presetPlaylist?: PlaylistId | null;
+  /** Set when a public page's "play" link brought the visitor here. */
+  presetSource?: SongSource | null;
 }) {
   const { t, lang } = useLang();
   const [name, setName] = useState("");
@@ -185,9 +185,11 @@ export function HomeScreen({
           <Button onClick={() => onCreate(trimmedName)} disabled={!named}>
             {t("createRoom")}
           </Button>
-          {presetPlaylist && (
+          {presetSource && (
             <p className="label mt-3 text-grey-500">
-              {t("presetPlaylist")} · {t(`playlist.${presetPlaylist}`)}
+              {presetSource.kind === "playlist"
+                ? `${t("presetPlaylist")} · ${t(`playlist.${presetSource.playlist}`)}`
+                : `${t("presetArtist")} · ${presetSource.artist}`}
             </p>
           )}
         </Route>
@@ -258,7 +260,37 @@ export function HomeScreen({
             </li>
           ))}
         </ul>
+        <Link
+          href={ARTISTS_PATH}
+          className="label mt-4 inline-block underline-offset-4 hover:text-accent hover:underline"
+        >
+          {t("allArtists")} →
+        </Link>
       </nav>
+
+      {/* The one stretch of prose on the front door. A search engine ranks a
+          page on the words it carries, and until this the home screen said
+          little more than its own name. Last, so a player on the way into a
+          room never has to read past it. */}
+      <section
+        className="rise mt-16 grid gap-6 md:grid-cols-12 md:gap-8"
+        style={{ animationDelay: `${STAGGER_MS * 5}ms` }}
+      >
+        <h2
+          className="border-t border-ink pt-3 font-semibold text-balance md:col-span-5"
+          style={{ fontSize: "var(--text-body)" }}
+        >
+          {t("aboutTitle")}
+        </h2>
+        <div
+          className="grid gap-4 text-pretty text-grey-500 md:col-span-7 md:border-t md:border-ink md:pt-3 [&>p]:max-w-prose"
+          style={{ fontSize: "0.9375rem" }}
+        >
+          <p>{t("aboutPlay").replace("{max}", String(MAX_PLAYERS))}</p>
+          <p>{t("aboutModes")}</p>
+          <p>{t("aboutSongs")}</p>
+        </div>
+      </section>
     </div>
   );
 }

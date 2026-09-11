@@ -21,6 +21,24 @@ export const STRINGS = {
     en: "Hear a clip. Name the song. Race your friends in real time.",
   },
 
+  /* The prose at the foot of the home screen — the words a search engine reads there. */
+  aboutTitle: {
+    th: "เกมทายเพลงออนไลน์ เล่นกับเพื่อนได้ทันที",
+    en: "A song quiz you play with friends, right in the browser",
+  },
+  aboutPlay: {
+    th: "ทุกคนในห้องได้ยินคลิปเพลงเดียวกันพร้อมกัน แล้วแข่งกันทายว่าเป็นเพลงอะไร ตอบถูกและตอบเร็วได้คะแนนมากกว่า สร้างห้องแล้วส่งรหัส 4 ตัวให้เพื่อน เล่นได้สูงสุด {max} คน หรือเล่นคนเดียวก็ได้ ไม่ต้องสมัคร ไม่ต้องลงแอป",
+    en: "Everyone in the room hears the same clip at the same moment and races to name the song — right and fast scores more. Create a room, send the 4-letter code, and play with up to {max} people, or on your own. No sign-up, nothing to install.",
+  },
+  aboutModes: {
+    th: "เลือกได้ว่าจะทายจาก 4 ตัวเลือก เล่นแบบ Heardle ที่ได้ยินแค่วินาทีแรกแล้วพิมพ์ชื่อเพลงเอง หรือทายว่าเพลงอนิเมะมาจากเรื่องไหน",
+    en: "Pick from four options, play Heardle — hear the first second and type the title — or name which anime a song is from.",
+  },
+  aboutSongs: {
+    th: "มีทั้งเพลงไทยตั้งแต่ยุค 90 ถึงเพลงฮิตตอนนี้ ลูกทุ่ง แร็ปไทย เพลงสากล เคป็อป และเพลงอนิเมะ หรือจะเลือกโหมดศิลปินให้ทุกข้อเป็นเพลงของศิลปินคนเดียวก็ได้",
+    en: "Thai songs from the 90s to today's charts, luk thung, Thai rap, global hits, K-pop and anime — or artist mode, where every question comes from one act's catalogue.",
+  },
+
   yourName: { th: "ชื่อของคุณ", en: "Your name" },
   namePlaceholder: { th: "ใส่ชื่อเล่น", en: "Enter a nickname" },
   createRoom: { th: "สร้างห้อง", en: "Create room" },
@@ -189,6 +207,8 @@ export const STRINGS = {
   allPlaylists: { th: "เพลย์ลิสต์ทั้งหมด", en: "All playlists" },
   /* Under the create button, when a playlist page's link brought the visitor here. */
   presetPlaylist: { th: "เริ่มด้วยเพลย์ลิสต์", en: "Starts with" },
+  presetArtist: { th: "เริ่มด้วยโหมดศิลปิน", en: "Starts with artist" },
+  allArtists: { th: "ศิลปินทั้งหมด", en: "All artists" },
   artistsCount: { th: "ศิลปิน", en: "artists" },
   byArtist: { th: "ศิลปิน", en: "By artist" },
   byArtistHint: {
@@ -245,6 +265,7 @@ export const STRINGS = {
   finalScore: { th: "คะแนนรวม", en: "Final score" },
   standings: { th: "อันดับ", en: "Standings" },
   playAgain: { th: "เล่นอีกครั้ง", en: "Play again" },
+  shareResult: { th: "แชร์ผล", en: "Share result" },
   songsPlayed: { th: "เพลงที่เล่นไป", en: "Songs played" },
   listen: { th: "ฟัง", en: "Play" },
   stopListening: { th: "หยุด", en: "Stop" },

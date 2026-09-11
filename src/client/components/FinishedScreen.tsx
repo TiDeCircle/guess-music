@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { RoomState } from "@/shared/types";
 import { MODES } from "@/shared/modes";
 import { computeMatchAwards } from "@/shared/awards";
 import { useLang } from "@/client/i18n";
+import { shareMessage, shareUrl } from "@/shared/share";
 import { Button } from "./Button";
 import { FieldLabel } from "./Shell";
 import { SongRecap } from "./SongRecap";
@@ -24,7 +25,7 @@ export function FinishedScreen({
   onPlayAgain: () => void;
   onBackToLobby: () => void;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const isHost = room.hostId === playerId;
   const standings = [...room.players].sort((a, b) => b.score - a.score);
   const winner = standings[0];
@@ -39,6 +40,45 @@ export function FinishedScreen({
     () => (room.summary ? computeMatchAwards(room.summary, room.players, room.config.mode) : {}),
     [room.summary, room.players, room.config.mode],
   );
+
+  /**
+   * What goes out when a player shares: how they did, and a link to the public
+   * page for what they played — the way the game reaches people who have never
+   * heard of it. In a shared mode every row carries the Room's result, so the
+   * same count works for both.
+   */
+  const me = room.players.find((p) => p.id === playerId);
+  const rounds = room.summary?.rounds ?? [];
+  const correct = rounds.filter((r) =>
+    r.results.some((x) => x.playerId === playerId && x.correct),
+  ).length;
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    if (!me) return;
+    const text = shareMessage({
+      lang,
+      source: room.config.source,
+      correct,
+      total: rounds.length,
+      score: me.score,
+      team: shared,
+    });
+    const url = shareUrl(room.config.source);
+    try {
+      // A phone's own share sheet reaches LINE and whatever else is installed;
+      // a browser without one puts the message on the clipboard instead.
+      if (navigator.share) {
+        await navigator.share({ text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Closing the share sheet rejects too, and is no error to anyone.
+    }
+  };
 
   return (
     <div className="flex flex-col gap-12">
@@ -65,14 +105,21 @@ export function FinishedScreen({
           {/* Play again keeps the settings; back to the lobby is how you change
               them without everyone leaving and passing a new room code around.
               Leaving lives in the header now, reachable from every screen. */}
-          {isHost && (
-            <div className="mt-10 grid gap-4">
-              <Button onClick={onPlayAgain}>{t("playAgain")}</Button>
-              <Button variant="outline" onClick={onBackToLobby}>
-                {t("backToLobby")}
+          <div className="mt-10 grid gap-4">
+            {isHost && (
+              <>
+                <Button onClick={onPlayAgain}>{t("playAgain")}</Button>
+                <Button variant="outline" onClick={onBackToLobby}>
+                  {t("backToLobby")}
+                </Button>
+              </>
+            )}
+            {me && rounds.length > 0 && (
+              <Button variant="outline" onClick={() => void share()}>
+                {copied ? t("copied") : t("shareResult")}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </section>
 
         <section className="md:col-span-7">

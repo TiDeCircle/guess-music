@@ -30,10 +30,31 @@ export const OPEN_GRAPH_BASE = {
 
 export const playlistPath = (id: PlaylistId) => `/playlist/${id}`;
 
-/**
- * The query a playlist page's "play" link carries into the home screen, which
- * then sets that Playlist on the room the visitor creates.
- */
-export const PRESET_PARAM = "playlist";
+/** The index of artist pages. */
+export const ARTISTS_PATH = "/artist";
 
-export const playHref = (id: PlaylistId) => `/?${PRESET_PARAM}=${id}`;
+/**
+ * An artist's name as a URL segment: "GAVIN:D" becomes "gavin-d", "Beyoncé"
+ * becomes "beyonce". Unique across the shipped list — tests/seo.test.ts holds it
+ * to that, since two artists on one slug would leave one of them without a page.
+ */
+export const artistSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+export const artistPath = (name: string) => `${ARTISTS_PATH}/${artistSlug(name)}`;
+
+/**
+ * The queries a public page's "play" link carries into the home screen, which
+ * then sets that Song Source on the room the visitor creates.
+ */
+export const PRESET_PLAYLIST_PARAM = "playlist";
+export const PRESET_ARTIST_PARAM = "artist";
+
+export const playHref = (id: PlaylistId) => `/?${PRESET_PLAYLIST_PARAM}=${id}`;
+
+export const artistPlayHref = (name: string) =>
+  `/?${PRESET_ARTIST_PARAM}=${encodeURIComponent(name)}`;

@@ -68,7 +68,7 @@ export class EmptyCatalogError extends Error {
  * An artist mode match needs enough songs that no round has to reuse one — ten
  * answers plus three decoys each, with the pool shared across all of them.
  */
-const MIN_ARTIST_POOL = 14;
+export const MIN_ARTIST_POOL = 14;
 
 export class ThinArtistError extends Error {
   constructor(readonly artist: string) {
