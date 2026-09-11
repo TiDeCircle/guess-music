@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { RoomListing } from "@/shared/types";
+import Link from "next/link";
+import type { PlaylistId, RoomListing } from "@/shared/types";
 import { useLang, type StringKey } from "@/client/i18n";
 import { NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from "@/shared/protocol";
-import { PLAYLIST_GROUPS } from "@/data/seeds";
+import { PLAYLIST_GROUPS, PLAYLIST_IDS } from "@/data/seeds";
 import { ARTISTS } from "@/data/seeds/artists";
 import { MODE_ORDER } from "@/shared/modes";
 import { SONG_INDEX_SIZE } from "@/data/song-index-meta";
+import { playlistPath } from "@/shared/site";
 import { Button } from "./Button";
 import { Logo } from "./Logo";
 import { FieldLabel } from "./Shell";
@@ -41,11 +43,14 @@ export function HomeScreen({
   onJoin,
   rooms,
   busy,
+  presetPlaylist,
 }: {
   onCreate: (name: string) => void;
   onJoin: (code: string, name: string) => void;
   rooms: RoomListing[];
   busy: boolean;
+  /** Set when a playlist page's link brought the visitor here. */
+  presetPlaylist?: PlaylistId | null;
 }) {
   const { t, lang } = useLang();
   const [name, setName] = useState("");
@@ -180,6 +185,11 @@ export function HomeScreen({
           <Button onClick={() => onCreate(trimmedName)} disabled={!named}>
             {t("createRoom")}
           </Button>
+          {presetPlaylist && (
+            <p className="label mt-3 text-grey-500">
+              {t("presetPlaylist")} · {t(`playlist.${presetPlaylist}`)}
+            </p>
+          )}
         </Route>
 
         {/* The rule is the separation. It runs the full height of the taller
@@ -226,6 +236,29 @@ export function HomeScreen({
           </div>
         </Route>
       </div>
+
+      {/* Every Playlist has a page of its own, and this is the one path to them
+          a crawler finds from the front door. Last and quiet: a player on the
+          way into a room never needs it. */}
+      <nav
+        aria-label={t("allPlaylists")}
+        className="rise mt-16"
+        style={{ animationDelay: `${STAGGER_MS * 4}ms` }}
+      >
+        <FieldLabel>{t("allPlaylists")}</FieldLabel>
+        <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2" style={{ fontSize: "0.9375rem" }}>
+          {PLAYLIST_IDS.map((id) => (
+            <li key={id}>
+              <Link
+                href={playlistPath(id)}
+                className="text-grey-500 underline-offset-4 hover:text-ink hover:underline"
+              >
+                {t(`playlist.${id}`)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
   );
 }

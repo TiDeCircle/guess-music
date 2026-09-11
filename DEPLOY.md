@@ -156,6 +156,7 @@ cd /var/www/guess-music && export NODE_OPTIONS=--dns-result-order=ipv4first && g
 | ผู้เล่นหลุดทุก 1 นาที | `proxy_read_timeout` สั้นไป | ต้องเป็น `3600s` |
 | `nginx -t` ฟ้อง duplicate map | มี site อื่นประกาศ map ชื่อซ้ำ | เปลี่ยนชื่อ `$guess_music_connection_upgrade` |
 | กดเริ่มเกมแล้วขึ้น "หาเพลงไม่ได้" | ต่อ iTunes ไม่ได้ หรือโดน rate limit | `curl -s "https://itunes.apple.com/search?term=test&limit=1"` ต้องได้ 200 |
+| หน้า `/playlist/...` ไม่มีรายชื่อเพลง | ตอน build หรือตอน refresh ต่อ iTunes ไม่ได้ (log ขึ้น `[playlist page] ... rendered without its songs`) | รอรอบ refresh ถัดไป (ไม่เกิน 6 ชม.) หรือ build ใหม่ |
 | เสียงไม่ดังบน iPhone | ไม่ได้กด "แตะเพื่อเปิดเสียง" | ปุ่มอยู่ในหน้า lobby ต้องกดหนึ่งครั้งต่อการเข้าเว็บ |
 
 ---

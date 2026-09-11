@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Sans_Thai } from "next/font/google";
 import { LangProvider } from "@/client/LangProvider";
 import { THEME_INIT_SCRIPT } from "@/client/theme";
+import { OPEN_GRAPH_BASE, SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/shared/site";
 import "./globals.css";
 
 /**
@@ -22,9 +23,19 @@ const plexThai = IBM_Plex_Sans_Thai({
   display: "swap",
 });
 
+/**
+ * What search engines and link previews read, for every page.
+ *
+ * No canonical here: it would be inherited by every page below, and each
+ * playlist page is an address of its own. The home page and the playlist pages
+ * set theirs. The preview image is src/app/opengraph-image.tsx.
+ */
 export const metadata: Metadata = {
-  title: "ทายเพลง — Guess Music",
-  description: "ฟังคลิป ทายชื่อเพลง แข่งกับเพื่อนแบบเรียลไทม์",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · ทายเพลง" },
+  description: SITE_DESCRIPTION,
+  openGraph: { ...OPEN_GRAPH_BASE, title: SITE_TITLE, description: SITE_DESCRIPTION },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {
