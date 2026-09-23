@@ -125,6 +125,20 @@ describe("socket wiring", () => {
     expect(res.ok).toBe(false);
   });
 
+  it("gives up a socket's old seat when it goes on to a second room", async () => {
+    const host = await client();
+    const guest = await client();
+    const created = await emit<any>(host, "room:create", { name: "Host" });
+    await emit<any>(guest, "room:join", { code: created.data.code, name: "Guest" });
+
+    const left = nextState(host, (s) =>
+      s.players.some((p: any) => p.id !== created.data.playerId && !p.connected),
+    );
+    const second = await emit<any>(guest, "room:create", { name: "Guest" });
+    expect(second.ok).toBe(true);
+    await left;
+  });
+
   it("answers a clock sync with a server timestamp", async () => {
     const s = await client();
     const before = Date.now();

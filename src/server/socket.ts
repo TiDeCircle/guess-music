@@ -95,6 +95,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       const parsed = createRoomSchema.safeParse(payload);
       if (!parsed.success) return ack({ ok: false, error: "ชื่อไม่ถูกต้อง" });
 
+      release(socket);
       const { room, player } = store.createRoom(parsed.data.name, socket.id);
       bind(socket, room, player.id);
       ack({
@@ -109,6 +110,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       const parsed = joinRoomSchema.safeParse(payload);
       if (!parsed.success) return ack({ ok: false, error: "รหัสห้องหรือชื่อไม่ถูกต้อง" });
 
+      release(socket);
       try {
         const { room, player } = store.joinRoom(
           parsed.data.code,
@@ -267,15 +269,24 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       }
     });
 
-    socket.on("disconnect", () => {
-      bindings.delete(socket.id);
-      const room = store.disconnect(socket.id);
-      if (room) {
-        pushState(room);
-        broadcastListing();
-      }
-    });
+    socket.on("disconnect", () => release(socket));
   });
+
+  /**
+   * Gives up whatever seat this socket holds, as a drop would.
+   *
+   * Run on disconnect, and also before a socket creates or joins a Room: one
+   * socket is one seat, and a second Room must not leave the first holding a
+   * player who looks connected but never will be again.
+   */
+  function release(socket: GameSocket): void {
+    const binding = bindings.get(socket.id);
+    bindings.delete(socket.id);
+    if (binding) void socket.leave(roomChannel(binding.code));
+    const rooms = store.disconnect(socket.id);
+    for (const room of rooms) pushState(room);
+    if (rooms.length > 0) broadcastListing();
+  }
 
   function bind(socket: GameSocket, room: Room, playerId: string): void {
     bindings.set(socket.id, { code: room.code, playerId });

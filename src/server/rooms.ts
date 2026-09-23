@@ -161,6 +161,12 @@ export type Room = {
    * code is the only gate this game has.
    */
   kickedSessionIds: Set<string>;
+  /**
+   * The host pressed start and the pool is still coming back from iTunes. The
+   * phase stays `lobby` for that whole wait, so without this a second press —
+   * or a config change — would slip in behind the first.
+   */
+  starting: boolean;
 };
 
 export type RoomEvents = {
@@ -241,6 +247,7 @@ export class RoomStore {
       timer: null,
       mutedPlayerIds: new Set(),
       kickedSessionIds: new Set(),
+      starting: false,
     };
     this.rooms.set(code, room);
     this.events.onListingChanged();
@@ -291,8 +298,13 @@ export class RoomStore {
   /**
    * Marks a player disconnected. Their seat survives for the grace period so a
    * refresh or a tunnel through a lift doesn't cost them their score.
+   *
+   * Looks in every Room, not just the first match: a seat this misses stays
+   * `connected` forever, so its Room is never swept and every Round in it waits
+   * out the full clock for a player who is not there.
    */
-  disconnect(socketId: string): Room | null {
+  disconnect(socketId: string): Room[] {
+    const affected: Room[] = [];
     for (const room of this.rooms.values()) {
       for (const player of room.players.values()) {
         if (player.socketId !== socketId) continue;
@@ -306,10 +318,10 @@ export class RoomStore {
         }
         // A round waiting on this player should not keep waiting.
         this.maybeAdvance(room);
-        return room;
+        affected.push(room);
       }
     }
-    return null;
+    return affected;
   }
 
   private transferHost(room: Room): void {
@@ -379,6 +391,10 @@ export class RoomStore {
     if (room.phase !== "lobby" && room.phase !== "finished") {
       throw new RoomError("in_match", "เปลี่ยนค่าระหว่างเล่นไม่ได้");
     }
+    // The pool being fetched was chosen from the old config.
+    if (room.starting) {
+      throw new RoomError("starting", "กำลังเริ่มเกม เปลี่ยนค่าไม่ได้");
+    }
     // The picker never offers a mode against a Source it cannot use, but a
     // socket payload is not the picker.
     if (!sourceSuitsMode(config.mode, config.source)) {
@@ -418,6 +434,8 @@ export class RoomStore {
 
     room.kickedSessionIds.add(target.sessionId);
     room.players.delete(targetId);
+    // They may have been the only one the Round was still waiting on.
+    this.maybeAdvance(room);
     this.events.onState(room);
     this.events.onListingChanged();
     return target;
@@ -484,9 +502,20 @@ export class RoomStore {
     if (room.phase !== "lobby" && room.phase !== "finished") {
       throw new RoomError("in_match", "กำลังเล่นอยู่แล้ว");
     }
+    // A double tap on start. The first press is already on its way.
+    if (room.starting) return;
 
     const rng = makeRng(Date.now() ^ randomInt(2 ** 31));
-    const pool = await buildPool(room.config.source, rng);
+    room.starting = true;
+    let pool: Track[];
+    try {
+      pool = await buildPool(room.config.source, rng);
+    } finally {
+      room.starting = false;
+    }
+    // Everyone left while iTunes answered and the Room was swept: starting it
+    // now would only set timers on a Room nobody can reach.
+    if (this.rooms.get(room.code) !== room) return;
 
     const rounds = MODES[room.config.mode].buildRounds({
       pool,

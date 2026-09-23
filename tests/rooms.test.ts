@@ -106,6 +106,46 @@ describe("room lifecycle", () => {
     expect(room.players.get(room.hostId)?.connected).toBe(true);
   });
 
+  it("frees a socket's seat in every room it holds, not just the first", () => {
+    const first = store.createRoom("P", "sock-x");
+    const second = store.createRoom("P", "sock-x");
+    const rooms = store.disconnect("sock-x");
+    expect(rooms).toHaveLength(2);
+    expect(first.room.players.get(first.player.id)!.connected).toBe(false);
+    expect(second.room.players.get(second.player.id)!.connected).toBe(false);
+  });
+
+  it("starts one match when start is pressed twice before the pool arrives", async () => {
+    const { room, ids } = seed(1);
+    store.setConfig(room, ids[0]!, {
+      mode: "quiz",
+      source: { kind: "playlist", playlist: "thai-classic" },
+      difficulty: "medium",
+      roundCount: 3,
+    });
+    await Promise.all([
+      store.startMatch(room, ids[0]!),
+      store.startMatch(room, ids[0]!),
+    ]);
+    expect(room.phase).toBe("loading");
+    // Two starts would have remembered two matches' worth of answers.
+    expect(room.recentTrackIds).toHaveLength(3);
+  });
+
+  it("refuses a config change while the match is still starting", async () => {
+    const { room, ids } = seed(1);
+    const config = {
+      mode: "quiz",
+      source: { kind: "playlist", playlist: "thai-classic" },
+      difficulty: "medium",
+      roundCount: 3,
+    } as const;
+    const starting = store.startMatch(room, ids[0]!);
+    expect(() => store.setConfig(room, ids[0]!, { ...config, roundCount: 5 })).toThrow();
+    await starting;
+    expect(room.match!.rounds).toHaveLength(10);
+  });
+
   it("accepts an artist as the song source", () => {
     const { room, ids } = seed(1);
     store.setConfig(room, ids[0]!, {
@@ -188,6 +228,29 @@ describe("moderation", () => {
     const { room, ids } = seed(2);
     expect(() => store.kick(room, ids[1]!, ids[0]!)).toThrow(/host/);
     expect(room.players.has(ids[0]!)).toBe(true);
+  });
+
+  it("closes the round when the one player it waited on is kicked", async () => {
+    const { room, ids } = seed(2);
+    await startMedium(room, ids[0]!);
+    store.markReady(room, ids[0]!, 0);
+    store.markReady(room, ids[1]!, 0);
+    goLive(room);
+    store.submitAnswer(room, ids[0]!, 0, room.match!.rounds[0]!.answer.id);
+    expect(room.phase).toBe("playing");
+
+    store.kick(room, ids[0]!, ids[1]!);
+    expect(room.phase).toBe("reveal");
+  });
+
+  it("starts the round when the one player it waited to buffer is kicked", async () => {
+    const { room, ids } = seed(2);
+    await startMedium(room, ids[0]!);
+    store.markReady(room, ids[0]!, 0);
+    expect(room.phase).toBe("loading");
+
+    store.kick(room, ids[0]!, ids[1]!);
+    expect(room.phase).toBe("playing");
   });
 
   it("refuses the host kicking themselves", () => {
