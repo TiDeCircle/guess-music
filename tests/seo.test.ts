@@ -8,6 +8,7 @@ import { PLAYLIST_IDS } from "@/data/seeds";
 import { ARTISTS } from "@/data/seeds/artists";
 import { MIN_ARTIST_POOL } from "@/server/catalog";
 import { shareMessage, shareUrl } from "@/shared/share";
+import { FAQ_KEYS, STRINGS } from "@/shared/strings";
 import {
   ARTISTS_PATH,
   SITE_URL,
@@ -128,5 +129,16 @@ describe("sharing a result", () => {
     expect(team).toContain("ทีมเรา");
     expect(team).toContain("Bodyslam");
     expect(team).not.toContain("900");
+  });
+});
+
+describe("home page questions", () => {
+  it("has both languages for every question and answer the FAQPage markup reads", () => {
+    for (const pair of FAQ_KEYS) {
+      for (const key of pair) {
+        expect(STRINGS[key].th.length).toBeGreaterThan(0);
+        expect(STRINGS[key].en.length).toBeGreaterThan(0);
+      }
+    }
   });
 });

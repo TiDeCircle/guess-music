@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { RoomListing, SongSource } from "@/shared/types";
 import { useLang, type StringKey } from "@/client/i18n";
+import { FAQ_KEYS } from "@/shared/strings";
 import { MAX_PLAYERS, NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from "@/shared/protocol";
 import { PLAYLIST_GROUPS, PLAYLIST_IDS } from "@/data/seeds";
 import { ARTISTS } from "@/data/seeds/artists";
@@ -119,6 +120,9 @@ export function HomeScreen({
             <Logo className="rise shrink-0" style={{ width: "0.78em", height: "0.78em" }} />
             <h1 className="rise text-balance font-bold leading-[0.86] tracking-[-0.03em]">
               {t("appName")}
+              {/* The poster shows one word; the heading a search engine or a
+                  screen reader gets says what the page is. */}
+              <span className="sr-only"> — {t("appNameRest")}</span>
             </h1>
           </div>
           <p
@@ -290,6 +294,33 @@ export function HomeScreen({
           <p>{t("aboutModes")}</p>
           <p>{t("aboutSongs")}</p>
         </div>
+      </section>
+
+      {/* The questions people type before they find the game. The same
+          strings feed the FAQPage JSON-LD in src/app/page.tsx. */}
+      <section
+        className="rise mt-12 grid gap-6 md:grid-cols-12 md:gap-8"
+        style={{ animationDelay: `${STAGGER_MS * 6}ms` }}
+      >
+        <h2
+          className="border-t border-ink pt-3 font-semibold text-balance md:col-span-5"
+          style={{ fontSize: "var(--text-body)" }}
+        >
+          {t("faqTitle")}
+        </h2>
+        <dl
+          className="grid gap-4 text-pretty md:col-span-7 md:border-t md:border-ink md:pt-3 [&>div]:max-w-prose"
+          style={{ fontSize: "0.9375rem" }}
+        >
+          {FAQ_KEYS.map(([q, a]) => (
+            <div key={q}>
+              <dt className="font-semibold">{t(q)}</dt>
+              <dd className="mt-1 text-grey-500">
+                {t(a).replace("{max}", String(MAX_PLAYERS))}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </section>
     </div>
   );

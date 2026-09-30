@@ -39,6 +39,36 @@ export const STRINGS = {
     en: "Thai songs from the 90s to today's charts, luk thung, Thai rap, global hits, K-pop and anime — or artist mode, where every question comes from one act's catalogue.",
   },
 
+  /* Read by screen readers and search engines after the poster-sized name in the h1. */
+  appNameRest: {
+    th: "เกมทายเพลงออนไลน์ เล่นกับเพื่อน",
+    en: "an online song quiz to play with friends",
+  },
+
+  /* Questions answered under the prose. The home page's FAQPage JSON-LD is built
+     from these same strings, so the markup never claims what the page doesn't show. */
+  faqTitle: { th: "คำถามที่พบบ่อย", en: "Questions" },
+  faqHowQ: { th: "เล่นเกมทายเพลงกับเพื่อนยังไง", en: "How do I play with friends?" },
+  faqHowA: {
+    th: "กดสร้างห้อง แล้วส่งรหัส 4 ตัวให้เพื่อน เพื่อนใส่รหัสในช่องเข้าห้องก็เข้ามาเล่นด้วยกันได้ ทุกคนฟังคลิปจากเครื่องตัวเองพร้อมกัน จะนั่งอยู่ด้วยกันหรือคุยกันผ่าน Discord หรือ LINE ก็เล่นได้",
+    en: "Create a room and send your friends the 4-letter code; they type it under Join. Everyone hears the clip on their own device at the same moment, so it works in the same room or over a Discord or LINE call.",
+  },
+  faqPlayersQ: { th: "เล่นได้กี่คน", en: "How many people can play?" },
+  faqPlayersA: {
+    th: "ห้องหนึ่งเล่นได้สูงสุด {max} คน หรือจะเล่นคนเดียวก็ได้",
+    en: "Up to {max} people per room, or on your own.",
+  },
+  faqFreeQ: { th: "ต้องสมัครหรือเสียเงินไหม", en: "Do I need an account, or to pay?" },
+  faqFreeA: {
+    th: "ไม่ต้อง เล่นฟรี ไม่ต้องสมัคร ไม่ต้องลงแอป เปิดในเบราว์เซอร์บนมือถือหรือคอมก็เล่นได้เลย",
+    en: "No. It's free, with no sign-up and nothing to install — it runs in the browser on a phone or a computer.",
+  },
+  faqPrivateQ: { th: "เล่นเฉพาะกลุ่มเพื่อนได้ไหม", en: "Can I keep a room to my friends?" },
+  faqPrivateA: {
+    th: "ได้ หัวห้องเลือก “ซ่อนห้องจากรายการ” ในห้องรอ ห้องจะไม่ขึ้นในหน้าแรก เข้าได้เฉพาะคนที่มีรหัส",
+    en: "Yes — the host ticks “Hide from room list” in the lobby and the room stays off the home page; only people with the code can join.",
+  },
+
   yourName: { th: "ชื่อของคุณ", en: "Your name" },
   namePlaceholder: { th: "ใส่ชื่อเล่น", en: "Enter a nickname" },
   createRoom: { th: "สร้างห้อง", en: "Create room" },
@@ -302,3 +332,11 @@ export const STRINGS = {
   "award.mvp-carry": { th: "ผู้แบกทีม", en: "MVP Carry" },
   "award.mvp-carry.desc": { th: "ตอบถูกช่วยทีมมากที่สุด", en: "Most answers scored for co-op" },
 } as const;
+
+/** The home page's questions, in order, as [question, answer] string keys. */
+export const FAQ_KEYS = [
+  ["faqHowQ", "faqHowA"],
+  ["faqPlayersQ", "faqPlayersA"],
+  ["faqFreeQ", "faqFreeA"],
+  ["faqPrivateQ", "faqPrivateA"],
+] as const satisfies readonly (readonly [keyof typeof STRINGS, keyof typeof STRINGS])[];
