@@ -142,6 +142,22 @@ cd /var/www/guess-music && export NODE_OPTIONS=--dns-result-order=ipv4first && g
 
 ---
 
+## Feedback จากผู้เล่น
+
+ปุ่ม "ส่งฟีดแบ็ค" (อยู่ท้ายทุกหน้าและในหน้าสรุปผล) ส่งข้อความไปเก็บที่ `/var/www/guess-music/data/feedback.jsonl` บรรทัดละหนึ่งข้อความ ไฟล์นี้อยู่ใน `.gitignore` จึงอยู่รอดหลัง `git pull` ถ้าจะย้ายไปที่อื่นให้ตั้ง `FEEDBACK_FILE`
+
+ถ้าจะอ่านผ่านเว็บ ให้ตั้งรหัสลับไว้ใน `.env.local` (Next โหลดไฟล์นี้เองตอน start และไฟล์นี้ก็ถูก gitignore อยู่แล้ว):
+
+```bash
+cd /var/www/guess-music && echo "FEEDBACK_KEY=$(openssl rand -hex 24)" >> .env.local && pm2 restart guess-music && grep FEEDBACK_KEY .env.local
+```
+
+แล้วเปิด `https://guess-music.madebytide.xyz/feedback?key=<รหัส>` ถ้าไม่ได้ตั้ง `FEEDBACK_KEY` หรือรหัสผิด หน้านี้จะตอบ 404 อ่านจาก ssh ก็ได้: `tail -n 20 /var/www/guess-music/data/feedback.jsonl`
+
+ส่งได้ไม่เกิน 5 ข้อความต่อ IP ต่อ 10 นาที
+
+---
+
 ## ปัญหาที่น่าจะเจอ
 
 | อาการ | สาเหตุ | แก้ |

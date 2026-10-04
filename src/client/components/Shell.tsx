@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LANGS, useLang } from "@/client/i18n";
 import type { ConnectionStatus } from "@/client/useGame";
+import { FeedbackButton } from "./FeedbackButton";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { VolumeControl } from "./VolumeControl";
@@ -101,6 +102,14 @@ export function Shell({
       <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 py-8 md:px-8 md:py-12">
         {children}
       </main>
+
+      {/* Reachable from every screen without competing with the header's
+          controls, which on a phone already fill the row. */}
+      <footer className="border-t border-grey-300">
+        <div className="mx-auto flex max-w-[1200px] justify-end px-4 py-3 md:px-8">
+          <FeedbackButton variant="link" />
+        </div>
+      </footer>
     </div>
   );
 }

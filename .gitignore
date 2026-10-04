@@ -11,3 +11,6 @@ next-env.d.ts
 # from skills-lock.json rather than tracked — the lock file is the record.
 .agents/
 .claude/
+
+# Player feedback (src/server/feedback.ts). Lives beside the deploy, survives git pull.
+data/

@@ -134,6 +134,32 @@ export const STRINGS = {
     en: "Kick this player? They won't be able to rejoin with the code — are you sure?",
   },
   copied: { th: "คัดลอกแล้ว", en: "Copied" },
+
+  /* --- feedback --- */
+  feedback: { th: "ส่งฟีดแบ็ค", en: "Send feedback" },
+  feedbackTitle: { th: "บอกเราหน่อย", en: "Tell us" },
+  feedbackHint: {
+    th: "เจอบั๊ก อยากได้ฟีเจอร์ หรืออยากให้เพิ่มเพลงไหน เขียนมาได้เลย คนทำเกมอ่านทุกข้อความ",
+    en: "Found a bug, want a feature, or a song added? Write it here — every message gets read.",
+  },
+  "feedbackKind.bug": { th: "บั๊ก", en: "Bug" },
+  "feedbackKind.idea": { th: "ไอเดีย", en: "Idea" },
+  "feedbackKind.song": { th: "ขอเพลง", en: "Song" },
+  "feedbackKind.other": { th: "อื่น ๆ", en: "Other" },
+  feedbackMessage: { th: "ข้อความ", en: "Message" },
+  feedbackPlaceholder: { th: "เล่าให้ฟังหน่อย…", en: "What's on your mind…" },
+  feedbackContact: { th: "ช่องทางติดต่อกลับ (ไม่บังคับ)", en: "How to reach you (optional)" },
+  feedbackContactPlaceholder: { th: "IG, LINE หรืออีเมล", en: "IG, LINE or email" },
+  feedbackSend: { th: "ส่ง", en: "Send" },
+  feedbackSending: { th: "กำลังส่ง…", en: "Sending…" },
+  feedbackThanks: { th: "ได้รับแล้ว ขอบคุณมาก!", en: "Got it — thank you!" },
+  feedbackRateLimited: {
+    th: "ส่งถี่ไปหน่อย ลองใหม่อีกสักพักนะ",
+    en: "That's a lot at once — try again in a few minutes.",
+  },
+  feedbackFailed: { th: "ส่งไม่สำเร็จ ลองอีกครั้ง", en: "Couldn't send — try again." },
+  close: { th: "ปิด", en: "Close" },
+
   shareHint: {
     th: "ส่งรหัสนี้ให้เพื่อน แล้วให้กดเข้าห้อง",
     en: "Send this code to your friends",

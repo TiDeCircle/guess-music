@@ -7,6 +7,7 @@ import { computeMatchAwards } from "@/shared/awards";
 import { useLang } from "@/client/i18n";
 import { shareMessage, shareUrl } from "@/shared/share";
 import { Button } from "./Button";
+import { FeedbackButton } from "./FeedbackButton";
 import { FieldLabel } from "./Shell";
 import { SongRecap } from "./SongRecap";
 
@@ -119,6 +120,15 @@ export function FinishedScreen({
                 {copied ? t("copied") : t("shareResult")}
               </Button>
             )}
+            {/* The end of a match is when a player knows what they thought of it. */}
+            <FeedbackButton
+              variant="button"
+              context={`${room.config.mode} · ${
+                room.config.source.kind === "playlist"
+                  ? room.config.source.playlist
+                  : room.config.source.artist
+              }`}
+            />
           </div>
         </section>
 
