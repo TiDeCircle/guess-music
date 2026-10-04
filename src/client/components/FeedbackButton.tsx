@@ -24,8 +24,8 @@ export function FeedbackButton({
   variant,
   context = "",
 }: {
-  /** `link` is the quiet one in the page footer; `button` sits among a screen's actions. */
-  variant: "link" | "button";
+  /** `header` is the red one in the top bar, on every screen; `button` sits among a screen's actions. */
+  variant: "header" | "button";
   context?: string;
 }) {
   const { t, lang } = useLang();
@@ -76,13 +76,15 @@ export function FeedbackButton({
 
   return (
     <>
-      {variant === "link" ? (
+      {variant === "header" ? (
+        // Red, against the rule that red belongs to the clock: the owner wants
+        // this found, and the header is the one place a clock never is.
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="label text-grey-500 underline-offset-4 hover:text-ink hover:underline"
+          className="label press flex h-10 shrink-0 items-center whitespace-nowrap border border-accent bg-accent px-3 text-white hover:bg-paper hover:text-accent"
         >
-          {t("feedback")}
+          {t("feedbackShort")}
         </button>
       ) : (
         <Button variant="outline" onClick={() => setOpen(true)}>

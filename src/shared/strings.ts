@@ -137,6 +137,7 @@ export const STRINGS = {
 
   /* --- feedback --- */
   feedback: { th: "ส่งฟีดแบ็ค", en: "Send feedback" },
+  feedbackShort: { th: "ฟีดแบ็ค", en: "Feedback" },
   feedbackTitle: { th: "บอกเราหน่อย", en: "Tell us" },
   feedbackHint: {
     th: "เจอบั๊ก อยากได้ฟีเจอร์ หรืออยากให้เพิ่มเพลงไหน เขียนมาได้เลย คนทำเกมอ่านทุกข้อความ",

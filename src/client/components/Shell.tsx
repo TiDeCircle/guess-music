@@ -32,13 +32,16 @@ export function Shell({
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-ink">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 md:px-8">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 py-4 md:px-8">
           <span className="flex min-w-0 items-center gap-2">
             <Logo className="h-6 w-6 shrink-0" />
             <span className="label truncate font-bold">{t("appName")}</span>
           </span>
 
-          <div className="flex items-center gap-3 md:gap-6">
+          {/* Wraps rather than overflows: on a phone, in a room, the strip,
+              feedback and leave are wider than the screen, so the last of
+              them drop to a second line, still against the right edge. */}
+          <div className="flex flex-wrap items-center justify-end gap-3 md:gap-6">
             {/* Nothing at all while the connection is healthy. The mark that
                 used to sit here said "fine" by being a small black square with
                 no label and no frame, which next to three bordered controls
@@ -85,6 +88,8 @@ export function Shell({
               </div>
             </div>
 
+            <FeedbackButton variant="header" />
+
             {onLeave && (
               <button
                 type="button"
@@ -102,14 +107,6 @@ export function Shell({
       <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 py-8 md:px-8 md:py-12">
         {children}
       </main>
-
-      {/* Reachable from every screen without competing with the header's
-          controls, which on a phone already fill the row. */}
-      <footer className="border-t border-grey-300">
-        <div className="mx-auto flex max-w-[1200px] justify-end px-4 py-3 md:px-8">
-          <FeedbackButton variant="link" />
-        </div>
-      </footer>
     </div>
   );
 }
