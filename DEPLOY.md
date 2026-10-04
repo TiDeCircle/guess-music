@@ -158,6 +158,17 @@ cd /var/www/guess-music && echo "FEEDBACK_KEY=$(openssl rand -hex 24)" >> .env.l
 
 ---
 
+## ประกาศ Pop-up
+
+เขียนประกาศ (หัวข้อ ข้อความ รูป และลิงก์ อย่างใดอย่างหนึ่งหรือหลายอย่าง) ได้ที่ `https://guess-music.madebytide.xyz/announcements?key=<FEEDBACK_KEY>` ใช้รหัสเดียวกับหน้า feedback ถ้ารหัสผิดหรือไม่ได้ตั้ง หน้านี้จะตอบ 404
+
+- ประกาศที่ "เปิดอยู่" จะเด้งขึ้นที่หน้าแรก ผู้เล่นแต่ละคนเห็นอันละครั้ง (จำไว้ใน localStorage) ไม่เด้งระหว่างอยู่ในห้อง
+- กด "ซ่อน" เพื่อเก็บไว้โดยไม่ให้เด้ง กด "ลบ" แล้วรูปจะถูกลบไปด้วย
+- รูปที่ใหญ่กว่า 1200px หรือเกิน 1.5MB หน้า admin จะย่อให้ก่อนอัปโหลด (nginx รับได้ไม่เกิน 2M)
+- เก็บที่ `/var/www/guess-music/data/announcements/` (`announcements.json` + `images/`) อยู่ใน `data/` ที่ gitignore จึงรอดหลัง `git pull` ถ้าจะย้ายให้ตั้ง `ANNOUNCEMENTS_DIR`
+
+---
+
 ## ปัญหาที่น่าจะเจอ
 
 | อาการ | สาเหตุ | แก้ |

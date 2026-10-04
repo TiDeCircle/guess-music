@@ -161,6 +161,11 @@ export const STRINGS = {
   feedbackFailed: { th: "ส่งไม่สำเร็จ ลองอีกครั้ง", en: "Couldn't send — try again." },
   close: { th: "ปิด", en: "Close" },
 
+  /* --- announcements (the admin's notices; their own text is not translated) --- */
+  announcement: { th: "ประกาศ", en: "Notice" },
+  announcementNext: { th: "ถัดไป", en: "Next" },
+  announcementOpen: { th: "ดูเพิ่ม", en: "Learn more" },
+
   shareHint: {
     th: "ส่งรหัสนี้ให้เพื่อน แล้วให้กดเข้าห้อง",
     en: "Send this code to your friends",

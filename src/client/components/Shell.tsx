@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LANGS, useLang } from "@/client/i18n";
 import type { ConnectionStatus } from "@/client/useGame";
+import { AnnouncementPopup } from "./AnnouncementPopup";
 import { FeedbackButton } from "./FeedbackButton";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
@@ -107,6 +108,9 @@ export function Shell({
       <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 py-8 md:px-8 md:py-12">
         {children}
       </main>
+
+      {/* Off a Room only: a notice over the answer grid would cost a round. */}
+      {!onLeave && <AnnouncementPopup />}
     </div>
   );
 }

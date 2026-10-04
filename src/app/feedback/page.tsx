@@ -1,7 +1,7 @@
-import { timingSafeEqual } from "node:crypto";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicFrame } from "@/app/PublicFrame";
+import { adminKeyMatches } from "@/server/adminKey";
 import { feedbackStore } from "@/server/feedback";
 import { STRINGS } from "@/shared/strings";
 
@@ -20,14 +20,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function keyMatches(given: string | undefined): boolean {
-  const expected = process.env.FEEDBACK_KEY;
-  if (!expected || !given) return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 const when = new Intl.DateTimeFormat("th-TH", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -40,7 +32,7 @@ export default async function FeedbackAdminPage({
   searchParams: Promise<{ key?: string }>;
 }) {
   const { key } = await searchParams;
-  if (!keyMatches(key)) notFound();
+  if (!adminKeyMatches(key)) notFound();
 
   const entries = await feedbackStore().list();
 
