@@ -117,6 +117,7 @@ type ItunesResult = {
   artistId?: number;
   artworkUrl100?: string;
   previewUrl?: string;
+  trackViewUrl?: string;
   releaseDate?: string;
   kind?: string;
 };
@@ -140,6 +141,7 @@ function toTrack(r: ItunesResult): Track | null {
     artistId: r.artistId ?? 0,
     artworkUrl: upscaleArtwork(r.artworkUrl100),
     previewUrl: r.previewUrl,
+    ...(r.trackViewUrl ? { storeUrl: r.trackViewUrl } : {}),
     year: Number(String(r.releaseDate ?? "").slice(0, 4)) || 0,
   };
 }

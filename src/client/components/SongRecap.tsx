@@ -3,6 +3,7 @@
 import type { MatchSummary } from "@/shared/types";
 import { useLang } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
+import { PreviewCredit, StoreLink } from "./StoreLink";
 
 /**
  * What the Match actually played.
@@ -70,6 +71,11 @@ export function SongRecap({
                   {round.track.artist}
                   {round.track.year ? ` · ${round.track.year}` : ""}
                 </span>
+                {round.track.storeUrl && (
+                  <span className="mt-1 block">
+                    <StoreLink track={round.track} compact />
+                  </span>
+                )}
               </span>
 
               <span className="flex items-center gap-4">
@@ -98,6 +104,7 @@ export function SongRecap({
           );
         })}
       </ul>
+      <PreviewCredit />
     </section>
   );
 }

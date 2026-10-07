@@ -331,6 +331,8 @@ export const STRINGS = {
   songsPlayed: { th: "เพลงที่เล่นไป", en: "Songs played" },
   listen: { th: "ฟัง", en: "Play" },
   stopListening: { th: "หยุด", en: "Stop" },
+  listenOnAppleMusic: { th: "ฟังบน Apple Music", en: "Listen on Apple Music" },
+  previewCredit: { th: "Preview provided courtesy of iTunes", en: "Preview provided courtesy of iTunes" },
 
   connecting: { th: "กำลังเชื่อมต่อ", en: "Connecting" },
   disconnected: { th: "หลุดการเชื่อมต่อ", en: "Disconnected" },

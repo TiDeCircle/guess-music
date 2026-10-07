@@ -15,6 +15,11 @@ export type Track = {
   artworkUrl: string;
   /** The 30-second Preview. Never a full song. */
   previewUrl: string;
+  /**
+   * The song's page on Apple Music. Apple's terms let a Preview be played only
+   * beside a way to get the song, so this is shown wherever a song is revealed.
+   */
+  storeUrl?: string;
   /** Release year, used to narrow a Playlist to an era. 0 when unknown. */
   year: number;
   /**

@@ -6,6 +6,7 @@ import { MODES, unlockedMs } from "@/shared/modes";
 import { useLang, type StringKey } from "@/client/i18n";
 import { FieldLabel } from "./Shell";
 import { ReactionPicker } from "./ReactionPicker";
+import { PreviewCredit, StoreLink } from "./StoreLink";
 
 /**
  * The moment the whole Lockstep design exists for: every player finds out at
@@ -88,8 +89,14 @@ export function RevealScreen({
             {reveal.track.series && (
               <p className="label mt-2 text-accent">{reveal.track.series}</p>
             )}
+            {reveal.track.storeUrl && (
+              <div className="mt-4">
+                <StoreLink track={reveal.track} />
+              </div>
+            )}
           </div>
         </div>
+        <PreviewCredit />
       </section>
 
       {/* One step behind the answer: the song is what everyone looks at first,
